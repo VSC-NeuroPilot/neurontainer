@@ -10,6 +10,8 @@
 	"dependencies": {
 		"@docker/docker-mui-theme": "~0.0.13",
 		"@docker/extension-api-client": "~0.4.2",
+		"@emotion/react": "~11.14.0",
+		"@emotion/styled": "~11.14.0",
 		"@mui/material": "~7.3.6",
 		"preact": "~10.26.9",
 		"preact-iso": "~2.11.0"
