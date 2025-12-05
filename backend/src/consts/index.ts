@@ -4,7 +4,7 @@ import { Logger } from '../utils/logger.js'
 
 class NoderontainerConstants {
     public neuro: NeuroClient;
-    public docker: DockerClient;
+    public docker!: DockerClient;
     public logger: Logger;
 
     private onNeuroClientInit(): void {}
