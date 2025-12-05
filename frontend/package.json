@@ -1,0 +1,23 @@
+{
+	"name": "ui",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@docker/docker-mui-theme": "~0.0.13",
+		"@docker/extension-api-client": "~0.4.2",
+		"@mui/material": "~7.3.6",
+		"preact": "~10.26.9",
+		"preact-iso": "~2.11.0"
+	},
+	"devDependencies": {
+		"@docker/extension-api-client-types": "~0.4.2",
+		"@preact/preset-vite": "~2.10.2",
+		"typescript": "~5.9.3",
+		"vite": "~7.0.4"
+	}
+}

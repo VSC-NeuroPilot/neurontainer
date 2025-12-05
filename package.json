@@ -1,0 +1,28 @@
+{
+  "name": "neurontainer",
+  "version": "1.0.0",
+  "description": "Docker Desktop extension for Neuro-sama Docker control",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pnpm -r build",
+    "dev:backend": "pnpm --filter vm dev",
+    "dev:frontend": "pnpm --filter ui dev",
+    "docker:build": "docker build -t neurontainer:latest .",
+    "docker:install": "docker extension install neurontainer:latest",
+    "docker:update": "docker extension update neurontainer:latest",
+    "docker:uninstall": "docker extension uninstall neurontainer:latest",
+    "docker:dev": "docker extension dev debug neurontainer:latest",
+    "docker:ui-source": "docker extension dev ui-source neurontainer:latest http://localhost:5173"
+  },
+  "keywords": [
+    "docker",
+    "extension",
+    "neuro-sama"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@changesets/cli": "~2.29.8"
+  }
+}

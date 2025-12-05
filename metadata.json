@@ -1,0 +1,14 @@
+{
+    "icon": "docker.svg",
+    "ui": {
+        "dashboard-tab": {
+            "title": "neurontainer",
+            "root": "/ui",
+            "src": "index.html"
+        }
+    },
+    "vm": {
+        "image": "${DESKTOP_PLUGIN_IMAGE}",
+        "composefile": "docker-compose.yml"
+    }
+}
