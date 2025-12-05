@@ -22,20 +22,18 @@ LABEL org.opencontainers.image.title="neurontainer" \
     com.docker.extension.categories="" \
     com.docker.extension.changelog=""
 
-WORKDIR /app
-
-# Copy backend build
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/backend/package.json ./backend/
-COPY --from=builder /app/backend/node_modules ./backend/node_modules
+# Copy metadata to root (required by Docker Desktop)
+COPY metadata.json /metadata.json
+COPY docker.svg /docker.svg
+COPY docker-compose.yml /docker-compose.yml
 
 # Copy frontend build to ui directory (required by Docker Desktop)
-COPY --from=builder /app/frontend/dist ./ui
+COPY --from=builder /app/frontend/dist /ui
 
-# Copy metadata
-COPY metadata.json .
-COPY docker.svg .
-
+# Copy backend
 WORKDIR /app/backend
+COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/package.json ./
+COPY --from=builder /app/backend/node_modules ./node_modules
 
 CMD ["node", "dist/index.js"]

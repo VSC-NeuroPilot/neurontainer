@@ -4,7 +4,7 @@
         "dashboard-tab": {
             "title": "neurontainer",
             "root": "/ui",
-            "src": "index.html"
+            "src": "dist/index.html"
         }
     },
     "vm": {
