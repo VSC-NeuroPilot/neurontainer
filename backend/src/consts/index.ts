@@ -31,4 +31,4 @@ class NoderontainerConstants {
     }
 }
 
-const CONT = new NoderontainerConstants()
+export const CONT = new NoderontainerConstants()

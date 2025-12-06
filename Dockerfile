@@ -13,7 +13,9 @@ RUN pnpm --filter ui build && pnpm --filter vm build
 FROM node:22-alpine
 LABEL org.opencontainers.image.title="neurontainer" \
     org.opencontainers.image.description="Docker Desktop extension for Neuro-sama Docker control" \
-    org.opencontainers.image.vendor="neurontainer" \
+    org.opencontainers.image.vendor="VSC-NeuroPilot" \
+    org.opencontainers.image.license="MIT" \
+    org.opencontainers.image.source="https://github.com/VSC-NeuroPilot/neurontainer" \
     com.docker.desktop.extension.api.version="0.3.4" \
     com.docker.extension.screenshots="" \
     com.docker.extension.detailed-description="" \
