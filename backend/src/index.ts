@@ -1,7 +1,6 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { DockerClient } from '@docker/node-sdk'
 import { NeuroClient } from 'neuro-game-sdk'
 import { CONT } from './consts/index.js'
 
@@ -9,9 +8,6 @@ const app = new Hono()
 
 // Enable CORS for Docker Desktop extension
 app.use('/*', cors())
-
-// Initialize Docker client
-let docker: DockerClient = CONT.docker
 
 // Configuration
 const NEURO_SERVER_URL = process.env.NEURO_SERVER_URL || 'ws://host.docker.internal:8000'
@@ -86,7 +82,7 @@ function initNeuro() {
       try {
         switch (actionData.name) {
           case 'list_containers': {
-            const containers = await docker.containerList({ all: true })
+            const containers = await CONT.docker.containerList({ all: true })
             const containerInfo = containers.map((c: any) => ({
               name: c.Names?.[0]?.replace('/', '') || c.Id.substring(0, 12),
               state: c.State,
@@ -104,34 +100,34 @@ function initNeuro() {
 
           case 'start_container': {
             const containerId = actionData.params.container
-            await docker.containerStart(containerId)
+            await CONT.docker.containerStart(containerId)
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} started successfully`)
             break
           }
 
           case 'stop_container': {
             const containerId = actionData.params.container
-            await docker.containerStop(containerId)
+            await CONT.docker.containerStop(containerId)
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} stopped successfully`)
             break
           }
 
           case 'restart_container': {
             const containerId = actionData.params.container
-            await docker.containerRestart(containerId)
+            await CONT.docker.containerRestart(containerId)
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} restarted successfully`)
             break
           }
 
           case 'remove_container': {
             const containerId = actionData.params.container
-            await docker.containerDelete(containerId, { force: true })
+            await CONT.docker.containerDelete(containerId, { force: true })
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} removed successfully`)
             break
           }
 
           case 'list_images': {
-            const images = await docker.imageList()
+            const images = await CONT.docker.imageList()
             const imageInfo = images.map((img: any) => ({
               tags: img.RepoTags || ['<none>'],
               size: (img.Size / 1024 / 1024).toFixed(2) + ' MB'
@@ -171,7 +167,7 @@ app.get('/', (c) => {
 
 app.get('/api/status', (c) => {
   return c.json({
-    docker: docker ? 'connected' : 'disconnected',
+    docker: CONT.docker ? 'connected' : 'disconnected',
     neuro: CONT.neuro?.ws?.readyState === 1 ? 'connected' : 'disconnected',
     neuro_server: NEURO_SERVER_URL
   })
