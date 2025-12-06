@@ -14,7 +14,7 @@ app.use('/*', cors())
 let docker: DockerClient = CONT.docker
 
 // Configuration
-const NEURO_SERVER_URL = process.env.NEURO_SERVER_URL || 'ws://localhost:8000'
+const NEURO_SERVER_URL = process.env.NEURO_SERVER_URL || 'ws://host.docker.internal:8000'
 const GAME_NAME = 'neurontainer'
 
 function initNeuro() {

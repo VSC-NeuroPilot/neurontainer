@@ -2,14 +2,12 @@
 
 `neurontainer` (pronounced neuron-tainer, all lowercase) is a Neuro integration that allows Neuro to communicate and control the Docker daemon, via the Docker Engine API.
 
-This is the "TypeScript Docker Desktop extension" version of the codebase, codenamed `noderontainer`. It is also sometimes called `neurontainer.ts`.
-
 ## Usage
 
 Docker must be downloaded and installed from [the official Docker website](https://www.docker.com/).
 Once installed, look for the `neurontainer` image, and install it.
 
-Alternatively, builds for noderontainer can also be pulled from VSC-NeuroPilot's GitHub Container Registry `(ghcr.io)`.
+Alternatively, builds for `noderontainer` can also be pulled from VSC-NeuroPilot's GitHub Container Registry `(ghcr.io)`.
 
 ## Feature-completeness
 
