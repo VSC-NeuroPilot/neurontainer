@@ -59,11 +59,16 @@ pnpm dev:backend
 # Terminal 2: Frontend dev server
 pnpm dev:frontend
 
-# Terminal 3: Connect frontend to extension
+# Terminal 3: Connect frontend to extension (optional for live UI in Docker Desktop)
 pnpm docker:ui-source
 ```
 
-Now changes to the frontend will hot-reload without rebuilding the Docker image!
+Neuro server connection:
+- Default: `ws://localhost:8000`
+- Extension fallbacks: `ws://docker.internal:8000`, then `ws://host.docker.internal:8000`
+- Override: set `NEURO_SERVER_URL` (e.g., `setx NEURO_SERVER_URL ws://127.0.0.1:8000`)
+
+Changes to the frontend will hot-reload without rebuilding the Docker image.
 
 ## Troubleshooting
 

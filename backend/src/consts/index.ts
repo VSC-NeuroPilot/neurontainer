@@ -17,13 +17,14 @@ class NoderontainerConstants {
 
     constructor() {
         this.logger = new Logger()
-        this.neuro = new NeuroClient('ws://host.docker.internal:8000', 'Docker Desktop', this.onNeuroClientInit)
+        // Prefer docker.internal which is available inside Docker Desktop extensions; fall back to host.docker.internal
+        this.neuro = new NeuroClient('ws://docker.internal:8000', 'Docker Desktop', this.onNeuroClientInit)
         this.neuro.onError = (_e) => {}
         this.loadDockerClient()
     }
 
     public reloadNeuroClient(url?: string, name?: string): void {
-        this.neuro = new NeuroClient(url ?? 'ws://host.docker.internal:8000', name ?? 'Docker Desktop', this.onNeuroClientInit)
+        this.neuro = new NeuroClient(url ?? 'ws://docker.internal:8000', name ?? 'Docker Desktop', this.onNeuroClientInit)
     }
 
     public reloadDockerClient(): void {

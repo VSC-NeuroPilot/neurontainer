@@ -72,6 +72,11 @@ pnpm dev:frontend
 pnpm docker:ui-source
 ```
 
+### Neuro Server Connection
+- Default: `ws://localhost:8000`
+- Extension fallbacks: `ws://docker.internal:8000`, then `ws://host.docker.internal:8000`
+- Override: set `NEURO_SERVER_URL` (e.g., `setx NEURO_SERVER_URL ws://127.0.0.1:8000`)
+
 ### Uninstall
 
 ```powershell

@@ -9,6 +9,11 @@ Once installed, look for the `neurontainer` image, and install it.
 
 Alternatively, builds for `noderontainer` can also be pulled from VSC-NeuroPilot's GitHub Container Registry `(ghcr.io)`.
 
+### Neuro server connection
+- Defaults to `ws://localhost:8000` for local development.
+- When packaged as a Docker Desktop extension, it will fall back to `ws://docker.internal:8000` then `ws://host.docker.internal:8000`.
+- Override with `NEURO_SERVER_URL` if your Neuro server is elsewhere.
+
 ## Feature-completeness
 
 Due to the incompleteness of the Docker TypeScript SDK, there are some missing features in the SDK that exist in the Docker Engine API.

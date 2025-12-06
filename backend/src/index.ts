@@ -1,21 +1,60 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { DockerClient } from '@docker/node-sdk'
 import { NeuroClient } from 'neuro-game-sdk'
 import { CONT } from './consts/index.js'
 
-const app = new Hono()
+// Use loose typing to avoid Hono TS overload friction on route definitions
+const app: any = new Hono()
 
 // Enable CORS for Docker Desktop extension
 app.use('/*', cors())
 
 // Configuration
-const NEURO_SERVER_URL = process.env.NEURO_SERVER_URL || 'ws://host.docker.internal:8000'
+const NEURO_SERVER_CANDIDATES = process.env.NEURO_SERVER_URL
+  ? [process.env.NEURO_SERVER_URL]
+  : [
+      // Local dev default
+      'ws://localhost:8000',
+      // Docker Desktop extension container
+      'ws://docker.internal:8000',
+      // Works on host and also inside extension (extra_hosts)
+      'ws://host.docker.internal:8000'
+    ]
 const GAME_NAME = 'neurontainer'
+let currentNeuroUrl = NEURO_SERVER_CANDIDATES[0]
 
-function initNeuro() {
-  CONT.neuro = new NeuroClient(NEURO_SERVER_URL, GAME_NAME, () => {
-    console.log('Connected to Neuro-sama server')
+let dockerClientPromise: Promise<DockerClient> | null = null
+
+function initDockerClient() {
+  if (!dockerClientPromise) {
+    dockerClientPromise = DockerClient.fromDockerConfig()
+      .then((client) => {
+        CONT.docker = client
+        console.log('Docker client connected')
+        return client
+      })
+      .catch((error) => {
+        dockerClientPromise = null
+        console.error('Failed to initialize Docker client', error)
+        throw error
+      })
+  }
+
+  return dockerClientPromise
+}
+
+async function getDockerClient() {
+  return initDockerClient()
+}
+
+function initNeuro(candidateIndex = 0) {
+  currentNeuroUrl = NEURO_SERVER_CANDIDATES[candidateIndex] ?? NEURO_SERVER_CANDIDATES[0]
+  console.log(`Trying Neuro server: ${currentNeuroUrl}`)
+
+  CONT.neuro = new NeuroClient(currentNeuroUrl, GAME_NAME, () => {
+    console.log(`Connected to Neuro-sama server at ${currentNeuroUrl}`)
 
     // Register actions that Neuro can execute
     CONT.neuro.registerActions([
@@ -154,6 +193,26 @@ function initNeuro() {
     // Send initial context to Neuro
     CONT.neuro.sendContext('neurontainer is now connected and ready to manage Docker containers', false)
   })
+
+  const tryNextCandidate = (errLabel: string, err?: unknown) => {
+    const nextIndex = candidateIndex + 1
+    if (nextIndex < NEURO_SERVER_CANDIDATES.length) {
+      console.warn(`${errLabel}; retrying Neuro server at ${NEURO_SERVER_CANDIDATES[nextIndex]}`)
+      // Attempt next host
+      initNeuro(nextIndex)
+    } else {
+      console.error(`${errLabel}; no more Neuro server candidates`, err)
+    }
+  }
+
+  CONT.neuro.onError = (e: any) => {
+    tryNextCandidate('Neuro client error', e)
+  }
+
+  // Some errors surface as close without a ready connection
+  CONT.neuro.onClose = () => {
+    tryNextCandidate('Neuro client closed before ready')
+  }
 }
 
 // Minimal HTTP server for configuration UI
@@ -169,26 +228,140 @@ app.get('/api/status', (c) => {
   return c.json({
     docker: CONT.docker ? 'connected' : 'disconnected',
     neuro: CONT.neuro?.ws?.readyState === 1 ? 'connected' : 'disconnected',
-    neuro_server: NEURO_SERVER_URL
+    neuro_server: currentNeuroUrl
   })
 });
 
+app.get('/api/ping', (c) => {
+  return c.json({
+    success: true,
+    message: 'pong'
+  })
+})
+
+app.get('/api/containers', async (c) => {
+  try {
+    const docker = await getDockerClient()
+    const containers = await docker.containerList({ all: true })
+
+    const data = containers.map((container: any) => ({
+      id: container.Id,
+      name: container.Names?.[0]?.replace('/', '') ?? container.Id.substring(0, 12),
+      image: container.Image,
+      state: container.State,
+      status: container.Status
+    }))
+
+    return c.json({ success: true, data })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to list containers'
+    return c.json({ success: false, error: message }, 500)
+  }
+})
+
+app.get('/api/images', async (c) => {
+  try {
+    const docker = await getDockerClient()
+    const images = await docker.imageList()
+
+    const data = images.map((image: any) => ({
+      id: image.Id,
+      tags: image.RepoTags || [],
+      size: image.Size,
+      created: image.Created
+    }))
+
+    return c.json({ success: true, data })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to list images'
+    return c.json({ success: false, error: message }, 500)
+  }
+})
+
+app.post('/api/containers/:id/start', async (c: any) => {
+  const { id } = c.req.param()
+  try {
+    const docker = await getDockerClient()
+    await docker.containerStart(id)
+    return c.json({ success: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `Failed to start container ${id}`
+    return c.json({ success: false, error: message }, 500)
+  }
+})
+
+app.post('/api/containers/:id/stop', async (c: any) => {
+  const { id } = c.req.param()
+  try {
+    const docker = await getDockerClient()
+    await docker.containerStop(id)
+    return c.json({ success: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `Failed to stop container ${id}`
+    return c.json({ success: false, error: message }, 500)
+  }
+})
+
+app.post('/api/containers/:id/restart', async (c: any) => {
+  const { id } = c.req.param()
+  try {
+    const docker = await getDockerClient()
+    await docker.containerRestart(id)
+    return c.json({ success: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `Failed to restart container ${id}`
+    return c.json({ success: false, error: message }, 500)
+  }
+})
+
+// Custom delete handler wired via top-level fetch wrapper (app.delete not available in this Hono build)
+async function handleDelete(req: Request) {
+  const url = new URL(req.url)
+  const match = url.pathname.match(/^\/api\/containers\/([^/]+)$/)
+  if (!match) return null
+
+  const id = match[1]
+  try {
+    const docker = await getDockerClient()
+    await docker.containerDelete(id, { force: true })
+    return Response.json({ success: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `Failed to remove container ${id}`
+    return Response.json({ success: false, error: message }, { status: 500 })
+  }
+}
+
+async function fetchWithDelete(req: Request, env: any, ctx: any) {
+  if (req.method === 'DELETE') {
+    const response = await handleDelete(req)
+    if (response) return response
+  }
+  return app.fetch(req, env, ctx)
+}
+
 // Start the application
-(function () {
-  console.log('Docker client initialized')
+;(function () {
+  initDockerClient().catch(() => {
+    // Initialization is also attempted lazily in each handler; log and continue
+    console.error('Docker client initialization failed at startup; will retry on demand')
+  })
 
   // Initialize Neuro connection
   initNeuro()
 
   // Start minimal HTTP server for configuration
-  serve({
-    fetch: app.fetch,
-    port: 3000
-  }, (info) => {
-    console.log(`Configuration server running on http://localhost:${info.port}`)
-    console.log('neurontainer is waiting for Neuro commands...')
-    console.log(`Neuro server: ${NEURO_SERVER_URL}`)
-    console.log(`Game name: ${GAME_NAME}`)
-  })
+  serve(
+    {
+      fetch: fetchWithDelete,
+      port: 3000
+    },
+    (info) => {
+      console.log(`Configuration server running on http://localhost:${info.port}`)
+      console.log('neurontainer is waiting for Neuro commands...')
+      console.log(`Neuro server candidates: ${NEURO_SERVER_CANDIDATES.join(', ')}`)
+      console.log(`Active Neuro server: ${currentNeuroUrl}`)
+      console.log(`Game name: ${GAME_NAME}`)
+    }
+  )
 })()
 
