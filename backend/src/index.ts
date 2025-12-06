@@ -12,18 +12,20 @@ const app: any = new Hono()
 app.use('/*', cors())
 
 // Configuration
-const NEURO_SERVER_CANDIDATES = process.env.NEURO_SERVER_URL
-  ? [process.env.NEURO_SERVER_URL]
-  : [
-      // Local dev default
-      'ws://localhost:8000',
-      // Docker Desktop extension container
-      'ws://docker.internal:8000',
-      // Works on host and also inside extension (extra_hosts)
-      'ws://host.docker.internal:8000'
-    ]
+const NEURO_SERVER_URL =
+  process.env.NEURO_SERVER_URL ||
+  // Docker Desktop extension container talking to host
+  'ws://host.docker.internal:8000'
 const GAME_NAME = 'neurontainer'
-let currentNeuroUrl = NEURO_SERVER_CANDIDATES[0]
+let currentNeuroUrl = NEURO_SERVER_URL
+let neuroConnected = false
+
+function describeWs(ws: any) {
+  if (!ws) return 'ws: none'
+  const rs = typeof ws.readyState === 'number' ? ws.readyState : 'unknown'
+  const url = ws.url ?? 'unknown'
+  return `ws[url=${url}, readyState=${rs}]`
+}
 
 let dockerClientPromise: Promise<DockerClient> | null = null
 
@@ -49,11 +51,14 @@ async function getDockerClient() {
   return initDockerClient()
 }
 
-function initNeuro(candidateIndex = 0) {
-  currentNeuroUrl = NEURO_SERVER_CANDIDATES[candidateIndex] ?? NEURO_SERVER_CANDIDATES[0]
+function initNeuro() {
+  if (neuroConnected) return
+
+  currentNeuroUrl = NEURO_SERVER_URL
   console.log(`Trying Neuro server: ${currentNeuroUrl}`)
 
   CONT.neuro = new NeuroClient(currentNeuroUrl, GAME_NAME, () => {
+    neuroConnected = true
     console.log(`Connected to Neuro-sama server at ${currentNeuroUrl}`)
 
     // Register actions that Neuro can execute
@@ -194,29 +199,30 @@ function initNeuro(candidateIndex = 0) {
     CONT.neuro.sendContext('neurontainer is now connected and ready to manage Docker containers', false)
   })
 
-  const tryNextCandidate = (errLabel: string, err?: unknown) => {
-    const nextIndex = candidateIndex + 1
-    if (nextIndex < NEURO_SERVER_CANDIDATES.length) {
-      console.warn(`${errLabel}; retrying Neuro server at ${NEURO_SERVER_CANDIDATES[nextIndex]}`)
-      // Attempt next host
-      initNeuro(nextIndex)
-    } else {
-      console.error(`${errLabel}; no more Neuro server candidates`, err)
+  const handleError = (errLabel: string, err?: unknown) => {
+    const wsInfo = describeWs(CONT.neuro?.ws)
+    if (neuroConnected) {
+      console.warn(`${errLabel} after connected; ignoring. ${wsInfo}`)
+      return
     }
+    console.error(`${errLabel}; unable to connect to Neuro server at ${NEURO_SERVER_URL}. ${wsInfo}`, err)
   }
 
   CONT.neuro.onError = (e: any) => {
-    tryNextCandidate('Neuro client error', e)
+    handleError('Neuro client error', e)
   }
 
   // Some errors surface as close without a ready connection
-  CONT.neuro.onClose = () => {
-    tryNextCandidate('Neuro client closed before ready')
+  CONT.neuro.onClose = (e?: any) => {
+    const code = e?.code ?? e?.kCode ?? 'unknown'
+    const reason = e?.reason ?? e?.kReason ?? ''
+    const wsInfo = describeWs(CONT.neuro?.ws)
+    handleError(`Neuro client closed before ready (code=${code}, reason=${reason}) ${wsInfo}`)
   }
 }
 
 // Minimal HTTP server for configuration UI
-app.get('/', (c) => {
+app.get('/', (c: any) => {
   return c.json({
     status: 'running',
     neuro_connected: CONT.neuro?.ws?.readyState === 1,
@@ -224,7 +230,7 @@ app.get('/', (c) => {
   })
 })
 
-app.get('/api/status', (c) => {
+app.get('/api/status', (c: any) => {
   return c.json({
     docker: CONT.docker ? 'connected' : 'disconnected',
     neuro: CONT.neuro?.ws?.readyState === 1 ? 'connected' : 'disconnected',
@@ -232,14 +238,14 @@ app.get('/api/status', (c) => {
   })
 });
 
-app.get('/api/ping', (c) => {
+app.get('/api/ping', (c: any) => {
   return c.json({
     success: true,
     message: 'pong'
   })
 })
 
-app.get('/api/containers', async (c) => {
+app.get('/api/containers', async (c: any) => {
   try {
     const docker = await getDockerClient()
     const containers = await docker.containerList({ all: true })
@@ -259,7 +265,7 @@ app.get('/api/containers', async (c) => {
   }
 })
 
-app.get('/api/images', async (c) => {
+app.get('/api/images', async (c: any) => {
   try {
     const docker = await getDockerClient()
     const images = await docker.imageList()
@@ -331,12 +337,12 @@ async function handleDelete(req: Request) {
   }
 }
 
-async function fetchWithDelete(req: Request, env: any, ctx: any) {
+const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
   if (req.method === 'DELETE') {
     const response = await handleDelete(req)
     if (response) return response
   }
-  return app.fetch(req, env, ctx)
+  return (app as any).fetch(req, env, ctx)
 }
 
 // Start the application
@@ -352,14 +358,13 @@ async function fetchWithDelete(req: Request, env: any, ctx: any) {
   // Start minimal HTTP server for configuration
   serve(
     {
-      fetch: fetchWithDelete,
+      fetch: fetchWithDelete as any,
       port: 3000
     },
     (info) => {
       console.log(`Configuration server running on http://localhost:${info.port}`)
       console.log('neurontainer is waiting for Neuro commands...')
-      console.log(`Neuro server candidates: ${NEURO_SERVER_CANDIDATES.join(', ')}`)
-      console.log(`Active Neuro server: ${currentNeuroUrl}`)
+      console.log(`Neuro server: ${currentNeuroUrl}`)
       console.log(`Game name: ${GAME_NAME}`)
     }
   )

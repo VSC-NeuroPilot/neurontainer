@@ -37,5 +37,7 @@ WORKDIR /app/backend
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/package.json ./
 COPY --from=builder /app/backend/node_modules ./node_modules
+# Copy pnpm store so linked deps (e.g., @hono/node-server) are available at runtime
+COPY --from=builder /app/node_modules /app/node_modules
 
 CMD ["node", "dist/index.js"]
