@@ -6,7 +6,7 @@ import { NeuroClient } from 'neuro-game-sdk'
 import { CONT } from './consts/index.js'
 
 // Use loose typing to avoid Hono TS overload friction on route definitions
-const app: any = new Hono()
+const app = new Hono()
 
 // Enable CORS for Docker Desktop extension
 app.use('/*', cors())
@@ -342,7 +342,7 @@ const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
     const response = await handleDelete(req)
     if (response) return response
   }
-  return (app as any).fetch(req, env, ctx)
+  return app.fetch(req, env, ctx)
 }
 
 // Start the application
