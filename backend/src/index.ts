@@ -12,6 +12,10 @@ const app: any = new Hono()
 app.use('/*', cors())
 
 // Configuration
+const DEFAULT_DOCKER_HOST = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock'
+// Force a default DOCKER_HOST so DockerClient.fromDockerConfig works even if env is missing
+process.env.DOCKER_HOST = DEFAULT_DOCKER_HOST
+
 const NEURO_SERVER_URL =
   process.env.NEURO_SERVER_URL ||
   // Docker Desktop extension container talking to host
@@ -39,7 +43,16 @@ function initDockerClient() {
       })
       .catch((error) => {
         dockerClientPromise = null
-        console.error('Failed to initialize Docker client', error)
+        console.error(
+          'Failed to initialize Docker client',
+          error,
+          `DOCKER_HOST=${process.env.DOCKER_HOST ?? 'unset'}`
+        )
+        if ((error as any)?.code === 'ENOENT') {
+          console.error(
+            'Docker socket not found. Ensure /var/run/docker.sock is mounted or DOCKER_HOST points to a reachable daemon.'
+          )
+        }
         throw error
       })
   }
@@ -120,12 +133,13 @@ function initNeuro() {
     ])
 
     // Handle actions from Neuro
-    CONT.neuro.onAction(async (actionData) => {
+  CONT.neuro.onAction(async (actionData) => {
       console.log(`Received action from Neuro: ${actionData.name}`, actionData.params)
 
       try {
         switch (actionData.name) {
           case 'list_containers': {
+            if (!CONT.docker) throw new Error('Docker client not initialized')
             const containers = await CONT.docker.containerList({ all: true })
             const containerInfo = containers.map((c: any) => ({
               name: c.Names?.[0]?.replace('/', '') || c.Id.substring(0, 12),
@@ -143,6 +157,7 @@ function initNeuro() {
           }
 
           case 'start_container': {
+            if (!CONT.docker) throw new Error('Docker client not initialized')
             const containerId = actionData.params.container
             await CONT.docker.containerStart(containerId)
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} started successfully`)
@@ -150,6 +165,7 @@ function initNeuro() {
           }
 
           case 'stop_container': {
+            if (!CONT.docker) throw new Error('Docker client not initialized')
             const containerId = actionData.params.container
             await CONT.docker.containerStop(containerId)
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} stopped successfully`)
@@ -157,6 +173,7 @@ function initNeuro() {
           }
 
           case 'restart_container': {
+            if (!CONT.docker) throw new Error('Docker client not initialized')
             const containerId = actionData.params.container
             await CONT.docker.containerRestart(containerId)
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} restarted successfully`)
@@ -164,6 +181,7 @@ function initNeuro() {
           }
 
           case 'remove_container': {
+            if (!CONT.docker) throw new Error('Docker client not initialized')
             const containerId = actionData.params.container
             await CONT.docker.containerDelete(containerId, { force: true })
             CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} removed successfully`)
@@ -171,6 +189,7 @@ function initNeuro() {
           }
 
           case 'list_images': {
+            if (!CONT.docker) throw new Error('Docker client not initialized')
             const images = await CONT.docker.imageList()
             const imageInfo = images.map((img: any) => ({
               tags: img.RepoTags || ['<none>'],
@@ -234,7 +253,8 @@ app.get('/api/status', (c: any) => {
   return c.json({
     docker: CONT.docker ? 'connected' : 'disconnected',
     neuro: CONT.neuro?.ws?.readyState === 1 ? 'connected' : 'disconnected',
-    neuro_server: currentNeuroUrl
+    neuro_server: currentNeuroUrl,
+    docker_host: process.env.DOCKER_HOST || 'unset'
   })
 });
 
