@@ -58,18 +58,25 @@ let dockerClientPromise: Promise<DockerClient> | null = null
 
 function initDockerClient() {
   if (!dockerClientPromise) {
+    const dockerHost = process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST
     console.log('Initializing Docker client...')
-    console.log(`DOCKER_HOST: ${process.env.DOCKER_HOST || 'unset'}`)
+    console.log(`DOCKER_HOST: ${dockerHost}`)
     if (!dockerSocketExists()) {
-      console.warn(
-        `Docker socket not found at ${socketPathFromDockerHost(process.env.DOCKER_HOST || '') || '<none>'}`
-      )
+      console.warn(`Docker socket not found at ${socketPathFromDockerHost(dockerHost) || '<none>'}`)
     }
 
-    dockerClientPromise = DockerClient.fromDockerConfig()
-      .then((client) => {
+    // Explicitly respect the resolved host (supports npipe on Windows host, unix socket in container)
+    dockerClientPromise = DockerClient.fromDockerHost(dockerHost)
+      .then(async (client) => {
         CONT.docker = client
-        console.log('Docker client connected')
+        // Test the connection
+        try {
+          await client.systemPing()
+          console.log('Docker client connected and verified')
+        } catch (pingError) {
+          console.error('Docker ping failed:', pingError)
+          throw pingError
+        }
         return client
       })
       .catch((error) => {
@@ -398,28 +405,28 @@ const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
   return app.fetch(req, env, ctx)
 }
 
-// Start the application
-;(function () {
-  initDockerClient().catch(() => {
-    // Initialization is also attempted lazily in each handler; log and continue
-    console.error('Docker client initialization failed at startup; will retry on demand')
-  })
+  // Start the application
+  ; (function () {
+    initDockerClient().catch(() => {
+      // Initialization is also attempted lazily in each handler; log and continue
+      console.error('Docker client initialization failed at startup; will retry on demand')
+    })
 
-  // Initialize Neuro connection
-  initNeuro()
+    // Initialize Neuro connection
+    initNeuro()
 
-  // Start minimal HTTP server for configuration
-  serve(
-    {
-      fetch: fetchWithDelete as any,
-      port: 3000
-    },
-    (info) => {
-      console.log(`Configuration server running on http://localhost:${info.port}`)
-      console.log('neurontainer is waiting for Neuro commands...')
-      console.log(`Neuro server: ${currentNeuroUrl}`)
-      console.log(`Game name: ${GAME_NAME}`)
-    }
-  )
-})()
+    // Start minimal HTTP server for configuration
+    serve(
+      {
+        fetch: fetchWithDelete as any,
+        port: 3000
+      },
+      (info) => {
+        console.log(`Configuration server running on http://localhost:${info.port}`)
+        console.log('neurontainer is waiting for Neuro commands...')
+        console.log(`Neuro server: ${currentNeuroUrl}`)
+        console.log(`Game name: ${GAME_NAME}`)
+      }
+    )
+  })()
 
