@@ -12,7 +12,11 @@ const app = new Hono()
 app.use('/*', cors())
 
 // Configuration
-const DEFAULT_DOCKER_HOST = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock'
+let DEFAULT_DOCKER_HOST = process.env.DOCKER_HOST
+if (!DEFAULT_DOCKER_HOST) {
+  console.warn('DOCKER_HOST undefined. Using Unix default.')
+  DEFAULT_DOCKER_HOST = 'unix:///var/run/docker.sock'
+}
 // Force a default DOCKER_HOST so DockerClient.fromDockerConfig works even if env is missing
 process.env.DOCKER_HOST = DEFAULT_DOCKER_HOST
 
@@ -35,10 +39,27 @@ let dockerClientPromise: Promise<DockerClient> | null = null
 
 function initDockerClient() {
   if (!dockerClientPromise) {
-    dockerClientPromise = DockerClient.fromDockerConfig()
-      .then((client) => {
+    // Use DOCKER_HOST if set, otherwise default based on platform
+    const dockerHost = process.env.DOCKER_HOST ||
+      (process.platform === 'win32'
+        ? 'npipe:////./pipe/docker_engine'
+        : 'unix:///var/run/docker.sock')
+
+    console.log(`Initializing Docker client...`)
+    console.log(`DOCKER_HOST: ${dockerHost}`)
+
+    // Use fromDockerHost to explicitly connect to the specified host
+    dockerClientPromise = DockerClient.fromDockerHost(dockerHost)
+      .then(async (client) => {
         CONT.docker = client
-        console.log('Docker client connected')
+        // Test the connection
+        try {
+          await client.systemPing()
+          console.log('Docker client connected and verified')
+        } catch (pingError) {
+          console.error('Docker ping failed:', pingError)
+          throw pingError
+        }
         return client
       })
       .catch((error) => {
@@ -208,7 +229,7 @@ function initNeuro() {
             CONT.neuro.sendActionResult(actionData.id, false, `Unknown action: ${actionData.name}`)
         }
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+        const errorMsg = error instanceof Error ? error.name + error.message + error.stack : 'Unknown error'
         console.error(`Error executing action ${actionData.name}:`, errorMsg)
         CONT.neuro.sendActionResult(actionData.id, false, `Failed to execute action: ${errorMsg}`)
       }
@@ -365,28 +386,28 @@ const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
   return app.fetch(req, env, ctx)
 }
 
-// Start the application
-;(function () {
-  initDockerClient().catch(() => {
-    // Initialization is also attempted lazily in each handler; log and continue
-    console.error('Docker client initialization failed at startup; will retry on demand')
-  })
+  // Start the application
+  ; (function () {
+    initDockerClient().catch(() => {
+      // Initialization is also attempted lazily in each handler; log and continue
+      console.error('Docker client initialization failed at startup; will retry on demand')
+    })
 
-  // Initialize Neuro connection
-  initNeuro()
+    // Initialize Neuro connection
+    initNeuro()
 
-  // Start minimal HTTP server for configuration
-  serve(
-    {
-      fetch: fetchWithDelete as any,
-      port: 3000
-    },
-    (info) => {
-      console.log(`Configuration server running on http://localhost:${info.port}`)
-      console.log('neurontainer is waiting for Neuro commands...')
-      console.log(`Neuro server: ${currentNeuroUrl}`)
-      console.log(`Game name: ${GAME_NAME}`)
-    }
-  )
-})()
+    // Start minimal HTTP server for configuration
+    serve(
+      {
+        fetch: fetchWithDelete as any,
+        port: 3000
+      },
+      (info) => {
+        console.log(`Configuration server running on http://localhost:${info.port}`)
+        console.log('neurontainer is waiting for Neuro commands...')
+        console.log(`Neuro server: ${currentNeuroUrl}`)
+        console.log(`Game name: ${GAME_NAME}`)
+      }
+    )
+  })()
 

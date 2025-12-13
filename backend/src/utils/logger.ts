@@ -1,5 +1,6 @@
 import winston from 'winston';
 import Transport from 'winston-transport'
+import path from 'node:path'
 
 function getLogFileName() {
     const now = new Date();
