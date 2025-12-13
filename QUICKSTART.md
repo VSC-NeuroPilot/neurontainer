@@ -70,6 +70,46 @@ Neuro server connection:
 
 Changes to the frontend will hot-reload without rebuilding the Docker image.
 
+## Fresh install and test (Docker Desktop on Windows)
+
+Run these in PowerShell:
+
+1) Use the Desktop Linux context
+```
+docker context use desktop-linux
+docker --context desktop-linux ps   # if this fails, restart Docker Desktop
+```
+
+2) Restart Tony (Neuro server) so it is listening on `ws://localhost:8000`. Tony only allows one client; restart it if you need to reconnect.
+
+3) Remove any old extension
+```
+docker extension rm neurontainer
+```
+
+4) Rebuild and install
+```
+pnpm build
+pnpm docker:build
+pnpm docker:install   # or pnpm docker:update
+```
+
+5) In Docker Desktop, check the extension container; start it if stopped, and view logs. If you see 503s, restart Tony and try again.
+
+6) Verify the service in the Desktop VM
+```
+docker --context desktop-linux compose -p neurontainer-desktop-extension ps
+```
+
+7) Send an action via Tony (e.g., `list_images`) and inspect logs
+```
+docker --context desktop-linux compose -p neurontainer-desktop-extension logs --tail=50
+```
+
+Checking logs in Docker Desktop:
+- In the Extensions tab, select neurontainer and use the built-in Logs view (if available), or
+- Use the CLI log command above (`docker --context desktop-linux compose ... logs --tail=50`).
+
 ## Troubleshooting
 
 ### Extension won't install

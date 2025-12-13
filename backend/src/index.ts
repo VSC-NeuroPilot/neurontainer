@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { DockerClient } from '@docker/node-sdk'
 import { NeuroClient } from 'neuro-game-sdk'
+import fs from 'fs'
 import { CONT } from './consts/index.js'
 
 // Use loose typing to avoid Hono TS overload friction on route definitions
@@ -12,9 +13,31 @@ const app = new Hono()
 app.use('/*', cors())
 
 // Configuration
-const DEFAULT_DOCKER_HOST = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock'
-// Force a default DOCKER_HOST so DockerClient.fromDockerConfig works even if env is missing
+function resolveDockerHost(): string {
+  const envHost = process.env.DOCKER_HOST
+  // If running inside container (linux) but host provided a Windows npipe, fall back to socket
+  if (envHost && process.platform !== 'win32' && envHost.startsWith('npipe:')) {
+    return 'unix:///var/run/docker.sock'
+  }
+  if (envHost) return envHost
+  return process.platform === 'win32'
+    ? 'npipe:////./pipe/docker_engine'
+    : 'unix:///var/run/docker.sock'
+}
+
+const DEFAULT_DOCKER_HOST = resolveDockerHost()
+// Force a default DOCKER_HOST so DockerClient.fromDockerConfig works even if env is missing.
 process.env.DOCKER_HOST = DEFAULT_DOCKER_HOST
+
+function socketPathFromDockerHost(host: string): string | null {
+  if (host.startsWith('unix://')) return host.replace('unix://', '')
+  return null
+}
+
+function dockerSocketExists(): boolean {
+  const socketPath = socketPathFromDockerHost(process.env.DOCKER_HOST || '')
+  return socketPath ? fs.existsSync(socketPath) : false
+}
 
 const NEURO_SERVER_URL =
   process.env.NEURO_SERVER_URL ||
@@ -35,6 +58,14 @@ let dockerClientPromise: Promise<DockerClient> | null = null
 
 function initDockerClient() {
   if (!dockerClientPromise) {
+    console.log('Initializing Docker client...')
+    console.log(`DOCKER_HOST: ${process.env.DOCKER_HOST || 'unset'}`)
+    if (!dockerSocketExists()) {
+      console.warn(
+        `Docker socket not found at ${socketPathFromDockerHost(process.env.DOCKER_HOST || '') || '<none>'}`
+      )
+    }
+
     dockerClientPromise = DockerClient.fromDockerConfig()
       .then((client) => {
         CONT.docker = client
@@ -209,7 +240,8 @@ function initNeuro() {
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-        console.error(`Error executing action ${actionData.name}:`, errorMsg)
+        const dockerHost = process.env.DOCKER_HOST || 'unset'
+        console.error(`Error executing action ${actionData.name}:`, errorMsg, `DOCKER_HOST=${dockerHost}`)
         CONT.neuro.sendActionResult(actionData.id, false, `Failed to execute action: ${errorMsg}`)
       }
     })
@@ -254,7 +286,8 @@ app.get('/api/status', (c: any) => {
     docker: CONT.docker ? 'connected' : 'disconnected',
     neuro: CONT.neuro?.ws?.readyState === 1 ? 'connected' : 'disconnected',
     neuro_server: currentNeuroUrl,
-    docker_host: process.env.DOCKER_HOST || 'unset'
+    docker_host: process.env.DOCKER_HOST || 'unset',
+    docker_socket_exists: dockerSocketExists()
   })
 });
 
