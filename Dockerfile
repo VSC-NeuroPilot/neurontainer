@@ -29,18 +29,25 @@ COPY metadata.json /metadata.json
 COPY docker.svg /docker.svg
 COPY docker-compose.yml /docker-compose.yml
 
+WORKDIR /app
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
+# Copy pnpm store so linked deps (e.g., @hono/node-server) are available at runtime
+COPY --from=builder /app/node_modules ./node_modules
+
 # Copy frontend build to ui directory (required by Docker Desktop)
-COPY --from=builder /app/frontend/dist /ui
+WORKDIR /app/ui
+COPY --from=builder /app/frontend/dist ./dist
+COPY --from=builder /app/frontend/package.json ./
+RUN ls -R
 
 # Copy backend
-WORKDIR /app/backend
+WORKDIR /app/vm
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/package.json ./
 COPY --from=builder /app/backend/node_modules ./node_modules
-# Copy pnpm store so linked deps (e.g., @hono/node-server) are available at runtime
-COPY --from=builder /app/node_modules /app/node_modules
-
-RUN ls -Ra /ui
+RUN ls -R
 
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

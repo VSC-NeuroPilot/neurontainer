@@ -171,7 +171,7 @@ function initNeuro() {
     ])
 
     // Handle actions from Neuro
-  CONT.neuro.onAction(async (actionData) => {
+    CONT.neuro.onAction(async (actionData) => {
       console.log(`Received action from Neuro: ${actionData.name}`, actionData.params)
 
       try {
@@ -376,6 +376,206 @@ app.post('/api/containers/:id/restart', async (c: any) => {
     return c.json({ success: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : `Failed to restart container ${id}`
+    return c.json({ success: false, error: message }, 500)
+  }
+})
+
+app.post('/api/reconnect/neuro', async (c: any) => {
+  try {
+    const body = await c.req.json()
+    const websocketUrl = body.websocketUrl || NEURO_SERVER_URL
+
+    console.log(`Reconnecting NeuroClient with URL: ${websocketUrl}`)
+
+    // Close existing connection if present
+    if (CONT.neuro) {
+      try {
+        if (CONT.neuro.ws && CONT.neuro.ws.readyState !== 3) { // Not CLOSED
+          CONT.neuro.ws.close()
+        }
+      } catch (closeError) {
+        console.warn('Error closing existing Neuro connection:', closeError)
+      }
+    }
+
+    // Reset connection state
+    neuroConnected = false
+    currentNeuroUrl = websocketUrl
+
+    // Reconstruct the NeuroClient
+    CONT.neuro = new NeuroClient(currentNeuroUrl, GAME_NAME, () => {
+      neuroConnected = true
+      console.log(`Reconnected to Neuro-sama server at ${currentNeuroUrl}`)
+
+      // Register actions
+      CONT.neuro.registerActions([
+        {
+          name: 'list_containers',
+          description: 'List all Docker containers with their current status',
+          schema: {}
+        },
+        {
+          name: 'start_container',
+          description: 'Start a Docker container by name or ID',
+          schema: {
+            type: 'object',
+            properties: {
+              container: { type: 'string', description: 'Container name or ID' }
+            },
+            required: ['container']
+          }
+        },
+        {
+          name: 'stop_container',
+          description: 'Stop a running Docker container by name or ID',
+          schema: {
+            type: 'object',
+            properties: {
+              container: { type: 'string', description: 'Container name or ID' }
+            },
+            required: ['container']
+          }
+        },
+        {
+          name: 'restart_container',
+          description: 'Restart a Docker container by name or ID',
+          schema: {
+            type: 'object',
+            properties: {
+              container: { type: 'string', description: 'Container name or ID' }
+            },
+            required: ['container']
+          }
+        },
+        {
+          name: 'remove_container',
+          description: 'Remove a Docker container by name or ID',
+          schema: {
+            type: 'object',
+            properties: {
+              container: { type: 'string', description: 'Container name or ID' }
+            },
+            required: ['container']
+          }
+        },
+        {
+          name: 'list_images',
+          description: 'List all Docker images available on the system',
+          schema: {}
+        }
+      ])
+
+      // Handle actions from Neuro
+      CONT.neuro.onAction(async (actionData) => {
+        console.log(`Received action from Neuro: ${actionData.name}`, actionData.params)
+
+        try {
+          switch (actionData.name) {
+            case 'list_containers': {
+              if (!CONT.docker) throw new Error('Docker client not initialized')
+              const containers = await CONT.docker.containerList({ all: true })
+              const containerInfo = containers.map((c: any) => ({
+                name: c.Names?.[0]?.replace('/', '') || c.Id.substring(0, 12),
+                state: c.State,
+                status: c.Status,
+                image: c.Image
+              }))
+
+              CONT.neuro.sendActionResult(
+                actionData.id,
+                true,
+                `Found ${containers.length} containers: ${containerInfo.map(c => `${c.name} (${c.state})`).join(', ')}`
+              )
+              break
+            }
+
+            case 'start_container': {
+              if (!CONT.docker) throw new Error('Docker client not initialized')
+              const containerId = actionData.params.container
+              await CONT.docker.containerStart(containerId)
+              CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} started successfully`)
+              break
+            }
+
+            case 'stop_container': {
+              if (!CONT.docker) throw new Error('Docker client not initialized')
+              const containerId = actionData.params.container
+              await CONT.docker.containerStop(containerId)
+              CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} stopped successfully`)
+              break
+            }
+
+            case 'restart_container': {
+              if (!CONT.docker) throw new Error('Docker client not initialized')
+              const containerId = actionData.params.container
+              await CONT.docker.containerRestart(containerId)
+              CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} restarted successfully`)
+              break
+            }
+
+            case 'remove_container': {
+              if (!CONT.docker) throw new Error('Docker client not initialized')
+              const containerId = actionData.params.container
+              await CONT.docker.containerDelete(containerId, { force: true })
+              CONT.neuro.sendActionResult(actionData.id, true, `Container ${containerId} removed successfully`)
+              break
+            }
+
+            case 'list_images': {
+              if (!CONT.docker) throw new Error('Docker client not initialized')
+              const images = await CONT.docker.imageList()
+              const imageInfo = images.map((img: any) => ({
+                tags: img.RepoTags || ['<none>'],
+                size: (img.Size / 1024 / 1024).toFixed(2) + ' MB'
+              }))
+
+              CONT.neuro.sendActionResult(
+                actionData.id,
+                true,
+                `Found ${images.length} images: ${imageInfo.map(i => i.tags[0]).join(', ')}`
+              )
+              break
+            }
+
+            default:
+              CONT.neuro.sendActionResult(actionData.id, false, `Unknown action: ${actionData.name}`)
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+          const dockerHost = process.env.DOCKER_HOST || 'unset'
+          console.error(`Error executing action ${actionData.name}:`, errorMsg, `DOCKER_HOST=${dockerHost}`)
+          CONT.neuro.sendActionResult(actionData.id, false, `Failed to execute action: ${errorMsg}`)
+        }
+      })
+
+      CONT.neuro.sendContext('neurontainer reconnected and ready to manage Docker containers', false)
+    })
+
+    // Set up error handlers
+    CONT.neuro.onError = (e: any) => {
+      const wsInfo = describeWs(CONT.neuro?.ws)
+      if (neuroConnected) {
+        console.warn(`Neuro client error after connected; ignoring. ${wsInfo}`, e)
+        return
+      }
+      console.error(`Neuro client error; unable to connect. ${wsInfo}`, e)
+    }
+
+    CONT.neuro.onClose = (e?: any) => {
+      const code = e?.code ?? e?.kCode ?? 'unknown'
+      const reason = e?.reason ?? e?.kReason ?? ''
+      const wsInfo = describeWs(CONT.neuro?.ws)
+      console.log(`Neuro client closed (code=${code}, reason=${reason}) ${wsInfo}`)
+    }
+
+    return c.json({
+      success: true,
+      message: `NeuroClient reconnection initiated to ${websocketUrl}`,
+      websocketUrl: currentNeuroUrl
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to reconnect NeuroClient'
+    console.error('Error reconnecting NeuroClient:', error)
     return c.json({ success: false, error: message }, 500)
   }
 })
