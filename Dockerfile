@@ -18,8 +18,8 @@ LABEL org.opencontainers.image.title="neurontainer" \
     org.opencontainers.image.source="https://github.com/VSC-NeuroPilot/neurontainer" \
     com.docker.desktop.extension.api.version="0.3.4" \
     com.docker.extension.screenshots="" \
-    com.docker.extension.detailed-description="" \
-    com.docker.extension.publisher-url="" \
+    com.docker.extension.detailed-description="This container is a Docker Desktop extension that allows Neuro-sama to control the Docker daemon via the Engine API." \
+    com.docker.extension.publisher-url="https://vsc-neuropilot.github.io/docs" \
     com.docker.extension.additional-urls="" \
     com.docker.extension.categories="" \
     com.docker.extension.changelog=""
@@ -40,5 +40,8 @@ COPY --from=builder /app/backend/node_modules ./node_modules
 # Copy pnpm store so linked deps (e.g., @hono/node-server) are available at runtime
 COPY --from=builder /app/node_modules /app/node_modules
 
+WORKDIR /
+RUN ls -Ra /ui
+
 EXPOSE 3000
-CMD ["node", "dist/index.js"]
+CMD ["node", "app/backend/dist/index.js"]
