@@ -1,10 +1,11 @@
 {
+    "$schema": "./metadata.schema.json",
     "icon": "docker.svg",
     "ui": {
         "dashboard-tab": {
             "title": "neurontainer",
             "root": "/ui",
-            "src": "dist/index.html"
+            "src": "index.html"
         }
     },
     "vm": {

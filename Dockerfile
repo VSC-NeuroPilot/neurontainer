@@ -7,7 +7,7 @@ COPY backend/package.json ./backend/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY frontend/ ./frontend/
 COPY backend/ ./backend/
-RUN pnpm --filter ui build && pnpm --filter vm build
+RUN pnpm -r build
 
 # Stage 2: Final runtime image
 FROM node:22-alpine
