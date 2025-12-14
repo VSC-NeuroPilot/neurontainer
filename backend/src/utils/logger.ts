@@ -22,10 +22,9 @@ export class Logger {
             format: winston.format.json(),
             defaultMeta: { service: 'user-service' },
             transports: [
-                new winston.transports.File({ filename: `noderontainer-full-log-${getLogFileName()}.log`, zippedArchive: true }),
-                new winston.transports.File({ filename: `noderontainer-error-log-${getLogFileName()}.log`, level: 'error' }),
+                new winston.transports.File({ filename: path.join(process.env.SERVER_ENVIRONMENT ? process.cwd() : '', `/data/noderontainer-full-log-${getLogFileName()}.log`), zippedArchive: true }),
+                new winston.transports.File({ filename: path.join(process.env.SERVER_ENVIRONMENT ? process.cwd() : '', `/data/noderontainer-error-log-${getLogFileName()}.log`), level: 'error' }),
                 new winston.transports.Console({ stderrLevels: ['error', 'fatal'], consoleWarnLevels: ['warn'], level: 'info' }),
-                new winston.transports.Http({ host: 'localhost', port: 5000 }),
             ]
         })
     }

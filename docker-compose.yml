@@ -5,6 +5,7 @@ services:
     image: ${DESKTOP_PLUGIN_IMAGE}
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - SERVER_ENVIRONMENT=extension
     volumes:
       # Mount Docker socket to allow backend to communicate with Docker daemon
       - /var/run/docker.sock:/var/run/docker.sock

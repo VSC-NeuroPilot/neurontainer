@@ -483,7 +483,7 @@ app.post('/api/containers/:id/restart', async (c: any) => {
   }
 })
 
-app.post('/api/reconnect/neuro', async (c: any) => {
+app.post('/api/reconnect/neuro', async (c) => {
   try {
     const body = await c.req.json()
     const requested = (body.websocketUrl || NEURO_SERVER_URL) as string
