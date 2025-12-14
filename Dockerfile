@@ -36,11 +36,9 @@ COPY --from=builder /app/pnpm-workspace.yaml ./
 # Copy pnpm store so linked deps (e.g., @hono/node-server) are available at runtime
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy frontend build to ui directory (required by Docker Desktop)
-WORKDIR /app/ui
-COPY --from=builder /app/frontend/dist ./dist
-COPY --from=builder /app/frontend/package.json ./
-RUN ls -R
+# Copy frontend build to /ui (Docker Desktop convention)
+COPY --from=builder /app/frontend/dist /ui
+RUN ls -R /ui
 
 # Copy backend
 WORKDIR /app/vm

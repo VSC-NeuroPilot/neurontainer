@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import { DockerClient } from '@docker/node-sdk'
 import { NeuroClient } from 'neuro-game-sdk'
 import fs from 'fs'
+import dns from 'node:dns/promises'
 import { CONT } from './consts/index.js'
 
 // Use loose typing to avoid Hono TS overload friction on route definitions
@@ -11,6 +12,21 @@ const app = new Hono()
 
 // Enable CORS for Docker Desktop extension
 app.use('/*', cors())
+
+// Log every HTTP request so we can confirm UI->backend calls.
+app.use('*', async (c: any, next: any) => {
+  const started = Date.now()
+  const method = c.req.method
+  const path = c.req.path || new URL(c.req.url).pathname
+  console.log(`[http] ${method} ${path}`)
+  try {
+    await next()
+  } finally {
+    const status = c.res?.status ?? 'unknown'
+    const ms = Date.now() - started
+    console.log(`[http] ${method} ${path} -> ${status} (${ms}ms)`)
+  }
+})
 
 // Configuration
 function resolveDockerHost(): string {
@@ -46,6 +62,28 @@ const NEURO_SERVER_URL =
 const GAME_NAME = 'neurontainer'
 let currentNeuroUrl = NEURO_SERVER_URL
 let neuroConnected = false
+let neuroGeneration = 0
+
+type NeuroEvent =
+  | { type: 'connect_attempt'; at: number; url: string }
+  | { type: 'connected'; at: number; url: string; ws: string }
+  | { type: 'error'; at: number; url: string; ws: string; error: string }
+  | { type: 'close'; at: number; url: string; ws: string; code: string; reason: string }
+  | { type: 'reconnect_request'; at: number; requested: string; normalized: string; note?: string }
+  | { type: 'reconnect_success'; at: number; url: string; ws: string }
+  | { type: 'reconnect_fail'; at: number; requested: string; normalized: string; error: string }
+
+let lastNeuroEvent: NeuroEvent | null = null
+let lastReconnectRequest: { requested: string; normalized: string; note?: string; at: number } | null = null
+
+function setLastNeuroEvent(e: NeuroEvent) {
+  lastNeuroEvent = e
+}
+
+function errToString(err: unknown) {
+  if (err instanceof Error) return `${err.name}: ${err.message}`
+  return typeof err === 'string' ? err : JSON.stringify(err)
+}
 
 function describeWs(ws: any) {
   if (!ws) return 'ws: none'
@@ -107,10 +145,15 @@ function initNeuro() {
 
   currentNeuroUrl = NEURO_SERVER_URL
   console.log(`Trying Neuro server: ${currentNeuroUrl}`)
+  setLastNeuroEvent({ type: 'connect_attempt', at: Date.now(), url: currentNeuroUrl })
+  const gen = ++neuroGeneration
 
   CONT.neuro = new NeuroClient(currentNeuroUrl, GAME_NAME, () => {
+    if (gen !== neuroGeneration) return
     neuroConnected = true
-    console.log(`Connected to Neuro-sama server at ${currentNeuroUrl}`)
+    const wsInfo = describeWs(CONT.neuro?.ws)
+    console.log(`Connected to Neuro-sama server at ${currentNeuroUrl} ${wsInfo}`)
+    setLastNeuroEvent({ type: 'connected', at: Date.now(), url: currentNeuroUrl, ws: wsInfo })
 
     // Register actions that Neuro can execute
     CONT.neuro.registerActions([
@@ -258,12 +301,17 @@ function initNeuro() {
   })
 
   const handleError = (errLabel: string, err?: unknown) => {
+    if (gen !== neuroGeneration) return
     const wsInfo = describeWs(CONT.neuro?.ws)
-    if (neuroConnected) {
-      console.warn(`${errLabel} after connected; ignoring. ${wsInfo}`)
-      return
-    }
-    console.error(`${errLabel}; unable to connect to Neuro server at ${NEURO_SERVER_URL}. ${wsInfo}`, err)
+    // Always log; reconnect issues otherwise look like "it didn't try".
+    console.error(`${errLabel} (url=${currentNeuroUrl}). ${wsInfo}`, err)
+    setLastNeuroEvent({
+      type: 'error',
+      at: Date.now(),
+      url: currentNeuroUrl,
+      ws: wsInfo,
+      error: errToString(err ?? errLabel)
+    })
   }
 
   CONT.neuro.onError = (e: any) => {
@@ -272,11 +320,62 @@ function initNeuro() {
 
   // Some errors surface as close without a ready connection
   CONT.neuro.onClose = (e?: any) => {
+    if (gen !== neuroGeneration) return
     const code = e?.code ?? e?.kCode ?? 'unknown'
     const reason = e?.reason ?? e?.kReason ?? ''
     const wsInfo = describeWs(CONT.neuro?.ws)
-    handleError(`Neuro client closed before ready (code=${code}, reason=${reason}) ${wsInfo}`)
+    console.warn(`Neuro client closed (code=${code}, reason=${reason}) url=${currentNeuroUrl}. ${wsInfo}`)
+    setLastNeuroEvent({
+      type: 'close',
+      at: Date.now(),
+      url: currentNeuroUrl,
+      ws: wsInfo,
+      code: String(code),
+      reason: String(reason)
+    })
   }
+}
+
+function normalizeNeuroUrl(input: string): { original: string; normalized: string; note?: string } {
+  const original = input
+  try {
+    const u = new URL(input)
+    let noteParts: string[] = []
+
+    // If user omitted a port (e.g. ws://localhost), default to 8000 instead of ws default :80.
+    if ((u.protocol === 'ws:' || u.protocol === 'wss:') && !u.port) {
+      u.port = '8000'
+      noteParts.push('Added default port :8000 (ws/wss without explicit port defaults to :80)')
+    }
+
+    const isLocal =
+      u.hostname === 'localhost' ||
+      u.hostname === '127.0.0.1' ||
+      u.hostname === '::1' ||
+      u.hostname.startsWith('127.')
+    // In the extension VM container, localhost points to the container itself.
+    if (isLocal && process.platform !== 'win32') {
+      u.hostname = 'host.docker.internal'
+      noteParts.push('Rewrote localhost -> host.docker.internal (inside container localhost is not the host)')
+    }
+    const note = noteParts.length ? noteParts.join('; ') : undefined
+    return { original, normalized: u.toString(), note }
+  } catch {
+    return { original, normalized: input }
+  }
+}
+
+async function waitForNeuroConnection(client: NeuroClient, url: string, timeoutMs = 6000): Promise<void> {
+  // Do not override NeuroClient handlers; just wait until ws is OPEN.
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const rs = (client as any)?.ws?.readyState
+    if (rs === 1) return
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  throw new Error(
+    `Timed out after ${timeoutMs}ms waiting for Neuro connection (${url}). ${describeWs((client as any)?.ws)}`
+  )
 }
 
 // Minimal HTTP server for configuration UI
@@ -292,7 +391,11 @@ app.get('/api/status', (c: any) => {
   return c.json({
     docker: CONT.docker ? 'connected' : 'disconnected',
     neuro: CONT.neuro?.ws?.readyState === 1 ? 'connected' : 'disconnected',
+    neuro_connected_flag: neuroConnected,
     neuro_server: currentNeuroUrl,
+    neuro_ws: describeWs(CONT.neuro?.ws),
+    last_neuro_event: lastNeuroEvent,
+    last_reconnect_request: lastReconnectRequest,
     docker_host: process.env.DOCKER_HOST || 'unset',
     docker_socket_exists: dockerSocketExists()
   })
@@ -383,9 +486,21 @@ app.post('/api/containers/:id/restart', async (c: any) => {
 app.post('/api/reconnect/neuro', async (c: any) => {
   try {
     const body = await c.req.json()
-    const websocketUrl = body.websocketUrl || NEURO_SERVER_URL
+    const requested = (body.websocketUrl || NEURO_SERVER_URL) as string
+    const { normalized: websocketUrl, note } = normalizeNeuroUrl(requested)
+    lastReconnectRequest = { requested, normalized: websocketUrl, note, at: Date.now() }
+    setLastNeuroEvent({ type: 'reconnect_request', at: Date.now(), requested, normalized: websocketUrl, note })
 
+    console.log(`Reconnect requested. url=${requested}`)
+    if (note) console.warn(note)
     console.log(`Reconnecting NeuroClient with URL: ${websocketUrl}`)
+    try {
+      const host = new URL(websocketUrl).hostname
+      const addrs = await dns.lookup(host, { all: true })
+      console.log(`Resolved ${host} -> ${addrs.map(a => a.address).join(', ')}`)
+    } catch (e) {
+      console.warn(`DNS lookup failed for ${websocketUrl}`, e)
+    }
 
     // Close existing connection if present
     if (CONT.neuro) {
@@ -401,11 +516,15 @@ app.post('/api/reconnect/neuro', async (c: any) => {
     // Reset connection state
     neuroConnected = false
     currentNeuroUrl = websocketUrl
+    const gen = ++neuroGeneration
 
-    // Reconstruct the NeuroClient
-    CONT.neuro = new NeuroClient(currentNeuroUrl, GAME_NAME, () => {
+    // Reconstruct the NeuroClient and WAIT until it is actually connected (or fails).
+    const client = new NeuroClient(currentNeuroUrl, GAME_NAME, () => {
+      if (gen !== neuroGeneration) return
       neuroConnected = true
-      console.log(`Reconnected to Neuro-sama server at ${currentNeuroUrl}`)
+      const wsInfo = describeWs((client as any)?.ws)
+      console.log(`Reconnected to Neuro-sama server at ${currentNeuroUrl} ${wsInfo}`)
+      setLastNeuroEvent({ type: 'connected', at: Date.now(), url: currentNeuroUrl, ws: wsInfo })
 
       // Register actions
       CONT.neuro.registerActions([
@@ -550,32 +669,54 @@ app.post('/api/reconnect/neuro', async (c: any) => {
 
       CONT.neuro.sendContext('neurontainer reconnected and ready to manage Docker containers', false)
     })
+    CONT.neuro = client
 
-    // Set up error handlers
-    CONT.neuro.onError = (e: any) => {
-      const wsInfo = describeWs(CONT.neuro?.ws)
-      if (neuroConnected) {
-        console.warn(`Neuro client error after connected; ignoring. ${wsInfo}`, e)
-        return
-      }
-      console.error(`Neuro client error; unable to connect. ${wsInfo}`, e)
+    // Ensure failures during/after reconnect are visible, but ignore stale generations.
+    ;(client as any).onError = (e: any) => {
+      if (gen !== neuroGeneration) return
+      const wsInfo = describeWs((client as any)?.ws)
+      console.error(`Neuro client error (url=${currentNeuroUrl}). ${wsInfo}`, e)
+      setLastNeuroEvent({ type: 'error', at: Date.now(), url: currentNeuroUrl, ws: wsInfo, error: errToString(e) })
     }
 
-    CONT.neuro.onClose = (e?: any) => {
+    ;(client as any).onClose = (e?: any) => {
+      if (gen !== neuroGeneration) return
       const code = e?.code ?? e?.kCode ?? 'unknown'
       const reason = e?.reason ?? e?.kReason ?? ''
-      const wsInfo = describeWs(CONT.neuro?.ws)
-      console.log(`Neuro client closed (code=${code}, reason=${reason}) ${wsInfo}`)
+      const wsInfo = describeWs((client as any)?.ws)
+      console.warn(`Neuro client closed (code=${code}, reason=${reason}) url=${currentNeuroUrl}. ${wsInfo}`)
+      setLastNeuroEvent({
+        type: 'close',
+        at: Date.now(),
+        url: currentNeuroUrl,
+        ws: wsInfo,
+        code: String(code),
+        reason: String(reason)
+      })
     }
+
+    await waitForNeuroConnection(client, currentNeuroUrl, 6000)
+    const wsInfo = describeWs(CONT.neuro?.ws)
+    console.log(`Neuro connection confirmed: ${wsInfo}`)
+    setLastNeuroEvent({ type: 'reconnect_success', at: Date.now(), url: currentNeuroUrl, ws: wsInfo })
 
     return c.json({
       success: true,
-      message: `NeuroClient reconnection initiated to ${websocketUrl}`,
+      message: `NeuroClient connected to ${currentNeuroUrl}`,
       websocketUrl: currentNeuroUrl
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to reconnect NeuroClient'
     console.error('Error reconnecting NeuroClient:', error)
+    if (lastReconnectRequest) {
+      setLastNeuroEvent({
+        type: 'reconnect_fail',
+        at: Date.now(),
+        requested: lastReconnectRequest.requested,
+        normalized: lastReconnectRequest.normalized,
+        error: message
+      })
+    }
     return c.json({ success: false, error: message }, 500)
   }
 })
