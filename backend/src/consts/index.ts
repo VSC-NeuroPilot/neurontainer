@@ -221,4 +221,4 @@ class NoderontainerConstants {
 
 export const CONT = new NoderontainerConstants();
 
-export const ERROR_MSG_REFERENCE = 'Someone tell Vedal there is a problem with his integration!';
+export const ERROR_MSG_REFERENCE = 'Someone tell the VSC-NeuroPilot crew there is a problem with their integration!';
