@@ -28,6 +28,11 @@ export class Logger {
             ]
         })
     }
+    public addTransport(...transport: Transport[]): this {
+        this.logger.transports.push(...transport)
+        return this
+    }
+    public exportLogs(): void {}
 }
 
 class FrontendLogger extends Transport {

@@ -1,11 +1,14 @@
-import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { DockerClient } from '@docker/node-sdk'
 import { NeuroClient } from 'neuro-game-sdk'
 import fs from 'fs'
-import dns from 'node:dns/promises'
+import { createServer } from 'node:http'
 import { CONT } from './consts/index.js'
+
+const SOCKET_PATH = '/run/guest-services/backend.sock';
+
+if (fs.existsSync(SOCKET_PATH)) fs.unlinkSync(SOCKET_PATH);
 
 // Use loose typing to avoid Hono TS overload friction on route definitions
 const app = new Hono()
@@ -494,13 +497,6 @@ app.post('/api/reconnect/neuro', async (c) => {
     console.log(`Reconnect requested. url=${requested}`)
     if (note) console.warn(note)
     console.log(`Reconnecting NeuroClient with URL: ${websocketUrl}`)
-    try {
-      const host = new URL(websocketUrl).hostname
-      const addrs = await dns.lookup(host, { all: true })
-      console.log(`Resolved ${host} -> ${addrs.map(a => a.address).join(', ')}`)
-    } catch (e) {
-      console.warn(`DNS lookup failed for ${websocketUrl}`, e)
-    }
 
     // Close existing connection if present
     if (CONT.neuro) {
@@ -671,29 +667,29 @@ app.post('/api/reconnect/neuro', async (c) => {
     })
     CONT.neuro = client
 
-    // Ensure failures during/after reconnect are visible, but ignore stale generations.
-    ;(client as any).onError = (e: any) => {
-      if (gen !== neuroGeneration) return
-      const wsInfo = describeWs((client as any)?.ws)
-      console.error(`Neuro client error (url=${currentNeuroUrl}). ${wsInfo}`, e)
-      setLastNeuroEvent({ type: 'error', at: Date.now(), url: currentNeuroUrl, ws: wsInfo, error: errToString(e) })
-    }
+      // Ensure failures during/after reconnect are visible, but ignore stale generations.
+      ; (client as any).onError = (e: any) => {
+        if (gen !== neuroGeneration) return
+        const wsInfo = describeWs((client as any)?.ws)
+        console.error(`Neuro client error (url=${currentNeuroUrl}). ${wsInfo}`, e)
+        setLastNeuroEvent({ type: 'error', at: Date.now(), url: currentNeuroUrl, ws: wsInfo, error: errToString(e) })
+      }
 
-    ;(client as any).onClose = (e?: any) => {
-      if (gen !== neuroGeneration) return
-      const code = e?.code ?? e?.kCode ?? 'unknown'
-      const reason = e?.reason ?? e?.kReason ?? ''
-      const wsInfo = describeWs((client as any)?.ws)
-      console.warn(`Neuro client closed (code=${code}, reason=${reason}) url=${currentNeuroUrl}. ${wsInfo}`)
-      setLastNeuroEvent({
-        type: 'close',
-        at: Date.now(),
-        url: currentNeuroUrl,
-        ws: wsInfo,
-        code: String(code),
-        reason: String(reason)
-      })
-    }
+      ; (client as any).onClose = (e?: any) => {
+        if (gen !== neuroGeneration) return
+        const code = e?.code ?? e?.kCode ?? 'unknown'
+        const reason = e?.reason ?? e?.kReason ?? ''
+        const wsInfo = describeWs((client as any)?.ws)
+        console.warn(`Neuro client closed (code=${code}, reason=${reason}) url=${currentNeuroUrl}. ${wsInfo}`)
+        setLastNeuroEvent({
+          type: 'close',
+          at: Date.now(),
+          url: currentNeuroUrl,
+          ws: wsInfo,
+          code: String(code),
+          reason: String(reason)
+        })
+      }
 
     await waitForNeuroConnection(client, currentNeuroUrl, 6000)
     const wsInfo = describeWs(CONT.neuro?.ws)
@@ -756,18 +752,59 @@ const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
     // Initialize Neuro connection
     initNeuro()
 
-    // Start minimal HTTP server for configuration
-    serve(
-      {
-        fetch: fetchWithDelete as any,
-        port: 3000
-      },
-      (info) => {
-        console.log(`Configuration server running on http://localhost:${info.port}`)
-        console.log('neurontainer is waiting for Neuro commands...')
-        console.log(`Neuro server: ${currentNeuroUrl}`)
-        console.log(`Game name: ${GAME_NAME}`)
-      }
-    )
-  })()
+    // Remove existing socket if present
+    if (fs.existsSync(SOCKET_PATH)) {
+      fs.unlinkSync(SOCKET_PATH)
+    }
 
+    // Create HTTP server with Hono's fetch handler
+    const server = createServer(async (req, res) => {
+      // Convert Node.js IncomingMessage to Web API Request
+      const url = new URL(req.url || '/', `http://localhost`)
+      const headers = new Headers()
+
+      Object.entries(req.headers).forEach(([key, value]) => {
+        if (value) headers.set(key, Array.isArray(value) ? value[0] : value)
+      })
+
+      let body: Buffer | undefined = undefined
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        const chunks: Buffer[] = []
+        for await (const chunk of req) {
+          chunks.push(chunk as Buffer)
+        }
+        body = Buffer.concat(chunks as unknown as Uint8Array[])
+      }
+
+      const request = new Request(url.href, {
+        method: req.method,
+        headers,
+        body: body as any
+      })
+
+      // Call Hono's fetch handler (which includes DELETE handling)
+      const response = await fetchWithDelete(request, {}, {})
+
+      // Convert Web API Response back to Node.js ServerResponse
+      res.writeHead(response.status, Object.fromEntries(response.headers))
+
+      if (response.body) {
+        const reader = response.body.getReader()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          res.write(value)
+        }
+      }
+
+      res.end()
+    })
+
+    // Listen on Unix socket
+    server.listen(SOCKET_PATH, () => {
+      console.log(`Backend service listening on ${SOCKET_PATH}`)
+      console.log('neurontainer is waiting for Neuro commands...')
+      console.log(`Neuro server: ${currentNeuroUrl}`)
+      console.log(`Game name: ${GAME_NAME}`)
+    })
+  })()

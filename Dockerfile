@@ -47,5 +47,4 @@ COPY --from=builder /app/backend/package.json ./
 COPY --from=builder /app/backend/node_modules ./node_modules
 RUN ls -R
 
-EXPOSE 3000
 CMD ["node", "dist/index.js"]

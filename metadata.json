@@ -9,6 +9,9 @@
     },
     "vm": {
         "image": "${DESKTOP_PLUGIN_IMAGE}",
-        "composefile": "docker-compose.yml"
+        "composefile": "docker-compose.yml",
+        "exposes": {
+            "socket": "backend.sock"
+        }
     }
 }
