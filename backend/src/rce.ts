@@ -47,6 +47,7 @@ export async function RCEActionHandler(actionData: ActionData): Promise<void> {
 
     try {
         const actionResult: ActionResult = await action.handler(actionData);
+        if (!actionResult.success) CONT.logger.error(`Action ${actionData.name} failed! Full reason: ${actionResult.message}`)
         CONT.neuro.sendContext(actionResult.success ? actionResult.message : `Action failed: ${actionResult.message}`, actionResult.silent);
     } catch (erm) {
         CONT.neuro.sendContext(`Action failed to execute! ${ERROR_MSG_REFERENCE}`)
