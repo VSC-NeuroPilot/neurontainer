@@ -19,3 +19,5 @@ Alternatively, builds for `noderontainer` can also be pulled from VSC-NeuroPilot
 
 Due to the incompleteness of the Docker TypeScript SDK, there are some missing features in the SDK that exist in the Docker Engine API.
 While it is possible to implement directly via HTTP APIs or a community SDK, using the official SDK reliably ensures that we have to handle less things.
+
+Implementation of missing features will be considered on a case-by-case basis.
