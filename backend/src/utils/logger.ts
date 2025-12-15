@@ -1,6 +1,14 @@
 import winston from 'winston';
 import Transport from 'winston-transport'
 import path from 'node:path'
+import fs from 'node:fs'
+
+const LOG_DIR = '/data/logs'
+
+// Ensure log directory exists
+if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true })
+}
 
 function getLogFileName() {
     const now = new Date();
@@ -19,20 +27,56 @@ export class Logger {
     constructor() {
         this.logger = winston.createLogger({
             level: 'debug',
-            format: winston.format.json(),
-            defaultMeta: { service: 'user-service' },
+            format: winston.format.combine(
+                winston.format.timestamp(),
+                winston.format.errors({ stack: true }),
+                winston.format.json()
+            ),
+            defaultMeta: { service: 'neurontainer' },
             transports: [
-                new winston.transports.File({ filename: path.join(process.env.SERVER_ENVIRONMENT ? process.cwd() : '', `/data/noderontainer-full-log-${getLogFileName()}.log`), zippedArchive: true }),
-                new winston.transports.File({ filename: path.join(process.env.SERVER_ENVIRONMENT ? process.cwd() : '', `/data/noderontainer-error-log-${getLogFileName()}.log`), level: 'error' }),
-                new winston.transports.Console({ stderrLevels: ['error', 'fatal'], consoleWarnLevels: ['warn'], level: 'info' }),
+                new winston.transports.File({
+                    filename: path.join(LOG_DIR, `neurontainer-full-${getLogFileName()}.log`),
+                    zippedArchive: true
+                }),
+                new winston.transports.File({
+                    filename: path.join(LOG_DIR, `neurontainer-error-${getLogFileName()}.log`),
+                    level: 'error'
+                }),
+                new winston.transports.Console({
+                    format: winston.format.combine(
+                        winston.format.colorize(),
+                        winston.format.simple()
+                    ),
+                    stderrLevels: ['error', 'fatal'],
+                    consoleWarnLevels: ['warn'],
+                    level: 'info'
+                }),
             ]
         })
     }
+
+    public info(message: string, ...meta: any[]): void {
+        this.logger.info(message, ...meta)
+    }
+
+    public error(message: string, ...meta: any[]): void {
+        this.logger.error(message, ...meta)
+    }
+
+    public warn(message: string, ...meta: any[]): void {
+        this.logger.warn(message, ...meta)
+    }
+
+    public debug(message: string, ...meta: any[]): void {
+        this.logger.debug(message, ...meta)
+    }
+
     public addTransport(...transport: Transport[]): this {
         this.logger.transports.push(...transport)
         return this
     }
-    public exportLogs(): void {}
+
+    public exportLogs(): void { }
 }
 
 class FrontendLogger extends Transport {
@@ -40,3 +84,6 @@ class FrontendLogger extends Transport {
         super(opts)
     }
 }
+
+// Export a singleton instance
+export const logger = new Logger()

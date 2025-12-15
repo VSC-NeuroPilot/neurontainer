@@ -5,6 +5,7 @@ import { NeuroClient } from 'neuro-game-sdk'
 import fs from 'fs'
 import { createServer } from 'node:http'
 import { CONT } from './consts/index.js'
+import { logger } from './utils/index.js'
 
 const SOCKET_PATH = '/run/guest-services/backend.sock';
 
@@ -21,13 +22,13 @@ app.use('*', async (c: any, next: any) => {
   const started = Date.now()
   const method = c.req.method
   const path = c.req.path || new URL(c.req.url).pathname
-  console.log(`[http] ${method} ${path}`)
+  logger.info(`[http] ${method} ${path}`)
   try {
     await next()
   } finally {
     const status = c.res?.status ?? 'unknown'
     const ms = Date.now() - started
-    console.log(`[http] ${method} ${path} -> ${status} (${ms}ms)`)
+    logger.info(`[http] ${method} ${path} -> ${status} (${ms}ms)`)
   }
 })
 
@@ -100,10 +101,10 @@ let dockerClientPromise: Promise<DockerClient> | null = null
 function initDockerClient() {
   if (!dockerClientPromise) {
     const dockerHost = process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST
-    console.log('Initializing Docker client...')
-    console.log(`DOCKER_HOST: ${dockerHost}`)
+    logger.info('Initializing Docker client...')
+    logger.info(`DOCKER_HOST: ${dockerHost}`)
     if (!dockerSocketExists()) {
-      console.warn(`Docker socket not found at ${socketPathFromDockerHost(dockerHost) || '<none>'}`)
+      logger.warn(`Docker socket not found at ${socketPathFromDockerHost(dockerHost) || '<none>'}`)
     }
 
     // Explicitly respect the resolved host (supports npipe on Windows host, unix socket in container)
@@ -113,9 +114,9 @@ function initDockerClient() {
         // Test the connection
         try {
           await client.systemPing()
-          console.log('Docker client connected and verified')
+          logger.info('Docker client connected and verified')
         } catch (pingError) {
-          console.error('Docker ping failed:', pingError)
+          logger.error('Docker ping failed:', pingError)
           throw pingError
         }
         return client
@@ -147,7 +148,7 @@ function initNeuro() {
   if (neuroConnected) return
 
   currentNeuroUrl = NEURO_SERVER_URL
-  console.log(`Trying Neuro server: ${currentNeuroUrl}`)
+  logger.info(`Trying Neuro server: ${currentNeuroUrl}`)
   setLastNeuroEvent({ type: 'connect_attempt', at: Date.now(), url: currentNeuroUrl })
   const gen = ++neuroGeneration
 
@@ -155,7 +156,7 @@ function initNeuro() {
     if (gen !== neuroGeneration) return
     neuroConnected = true
     const wsInfo = describeWs(CONT.neuro?.ws)
-    console.log(`Connected to Neuro-sama server at ${currentNeuroUrl} ${wsInfo}`)
+    logger.info(`Connected to Neuro-sama server at ${currentNeuroUrl} ${wsInfo}`)
     setLastNeuroEvent({ type: 'connected', at: Date.now(), url: currentNeuroUrl, ws: wsInfo })
 
     // Register actions that Neuro can execute
@@ -409,81 +410,6 @@ app.get('/api/ping', (c: any) => {
     success: true,
     message: 'pong'
   })
-})
-
-app.get('/api/containers', async (c: any) => {
-  try {
-    const docker = await getDockerClient()
-    const containers = await docker.containerList({ all: true })
-
-    const data = containers.map((container: any) => ({
-      id: container.Id,
-      name: container.Names?.[0]?.replace('/', '') ?? container.Id.substring(0, 12),
-      image: container.Image,
-      state: container.State,
-      status: container.Status
-    }))
-
-    return c.json({ success: true, data })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to list containers'
-    return c.json({ success: false, error: message }, 500)
-  }
-})
-
-app.get('/api/images', async (c: any) => {
-  try {
-    const docker = await getDockerClient()
-    const images = await docker.imageList()
-
-    const data = images.map((image: any) => ({
-      id: image.Id,
-      tags: image.RepoTags || [],
-      size: image.Size,
-      created: image.Created
-    }))
-
-    return c.json({ success: true, data })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to list images'
-    return c.json({ success: false, error: message }, 500)
-  }
-})
-
-app.post('/api/containers/:id/start', async (c: any) => {
-  const { id } = c.req.param()
-  try {
-    const docker = await getDockerClient()
-    await docker.containerStart(id)
-    return c.json({ success: true })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : `Failed to start container ${id}`
-    return c.json({ success: false, error: message }, 500)
-  }
-})
-
-app.post('/api/containers/:id/stop', async (c: any) => {
-  const { id } = c.req.param()
-  try {
-    const docker = await getDockerClient()
-    await docker.containerStop(id)
-    return c.json({ success: true })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : `Failed to stop container ${id}`
-    return c.json({ success: false, error: message }, 500)
-  }
-})
-
-app.post('/api/containers/:id/restart', async (c: any) => {
-  const { id } = c.req.param()
-  try {
-    const docker = await getDockerClient()
-    await docker.containerRestart(id)
-    return c.json({ success: true })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : `Failed to restart container ${id}`
-    return c.json({ success: false, error: message }, 500)
-  }
 })
 
 app.post('/api/reconnect/neuro', async (c) => {
@@ -802,9 +728,9 @@ const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
 
     // Listen on Unix socket
     server.listen(SOCKET_PATH, () => {
-      console.log(`Backend service listening on ${SOCKET_PATH}`)
-      console.log('neurontainer is waiting for Neuro commands...')
-      console.log(`Neuro server: ${currentNeuroUrl}`)
-      console.log(`Game name: ${GAME_NAME}`)
+      logger.info(`Backend service listening on ${SOCKET_PATH}`)
+      logger.info('neurontainer is waiting for Neuro commands...')
+      logger.info(`Neuro server: ${currentNeuroUrl}`)
+      logger.info(`Game name: ${GAME_NAME}`)
     })
   })()
