@@ -105,10 +105,6 @@ function initDockerClient() {
   return dockerClientPromise
 }
 
-async function getDockerClient() {
-  return initDockerClient()
-}
-
 // Minimal HTTP server for configuration UI
 app.get('/', (c) => {
   return c.json({
@@ -128,7 +124,7 @@ app.get('/api/status', (c) => {
     last_neuro_event: CONT.lastNeuroEvent,
     last_reconnect_request: CONT.lastReconnectRequest,
     docker_host: process.env.DOCKER_HOST || 'unset',
-    docker_socket_exists: dockerSocketExists()
+    docker_socket_exists: CONT.docker ? true : false
   })
 });
 
@@ -178,14 +174,8 @@ app.post('/api/reconnect/neuro', async (c) => {
 })
   // Start the application
   ; (function () {
-    initDockerClient().catch(() => {
-      // Initialization is also attempted lazily in each handler; log and continue
-      console.error('Docker client initialization failed at startup; will retry on demand')
-    })
-
-    // Set action handler and initialize Neuro connection
+    // Set action handler
     CONT.neuro.onAction(RCEActionHandler)
-    CONT.initNeuro()
 
     // Remove existing socket if present
     if (fs.existsSync(SOCKET_PATH)) {
@@ -218,7 +208,7 @@ app.post('/api/reconnect/neuro', async (c) => {
       })
 
       // Call Hono's fetch handler
-      const response = await app.fetch(request, process.env)
+      const response = await app.fetch(request)
 
       // Convert Web API Response back to Node.js ServerResponse
       res.writeHead(response.status, Object.fromEntries(response.headers))
