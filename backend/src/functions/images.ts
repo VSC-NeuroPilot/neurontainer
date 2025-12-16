@@ -10,8 +10,8 @@ export const imageActions: RCEAction[] = [
 ];
 
 export async function handleListImages(_actionData: ActionData): Promise<ActionResult> {
-    const images = await CONT.docker.imageList()
-    const imageInfo = images.map((img: any) => ({
+    const images = await CONT.docker!.imageList()
+    const imageInfo = images.map((img) => ({
         tags: img.RepoTags || ['<none>'],
         size: (img.Size / 1024 / 1024).toFixed(2) + ' MB'
     }))

@@ -30,7 +30,7 @@ export const containerActions: RCEAction[] = [
 ];
 
 export async function handleListContainers(_actionData: ActionData): Promise<ActionResult> {
-    const containers = await CONT.docker.containerList({ all: true })
+    const containers = await CONT.docker!.containerList({ all: true })
     const containerInfo = containers.map((c) => ({
         name: c.Names?.[0]?.replace('/', '') || c.Id?.substring(0, 12) || 'Unknown container',
         state: c.State,
@@ -46,24 +46,24 @@ export async function handleListContainers(_actionData: ActionData): Promise<Act
 
 export async function handleStartContainer(actionData: ActionData): Promise<ActionResult> {
     const containerId = actionData.params.container
-    await CONT.docker.containerStart(containerId)
+    await CONT.docker!.containerStart(containerId)
     return { success: true, message: `Container ${containerId} started.` }
 }
 
 export async function handleStopContainer(actionData: ActionData): Promise<ActionResult> {
     const containerId = actionData.params.container
-    await CONT.docker.containerStop(containerId)
+    await CONT.docker!.containerStop(containerId)
     return { success: true, message: `Container ${containerId} stopped.` }
 }
 
 export async function handleRestartContainer(actionData: ActionData): Promise<ActionResult> {
     const containerId = actionData.params.container
-    await CONT.docker.containerRestart(containerId)
+    await CONT.docker!.containerRestart(containerId)
     return { success: true, message: `Container ${containerId} restarted.` }
 }
 
 export async function handleRemoveContainer(actionData: ActionData): Promise<ActionResult> {
     const containerId = actionData.params.container
-    await CONT.docker.containerDelete(containerId, { force: true })
+    await CONT.docker!.containerDelete(containerId, { force: true })
     return { success: true, message: `Container ${containerId} removed.` }
 }

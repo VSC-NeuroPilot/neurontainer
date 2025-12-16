@@ -13,7 +13,8 @@
     "docker:update": "docker extension update neurontainer:latest",
     "docker:uninstall": "docker extension uninstall neurontainer:latest",
     "docker:dev": "docker extension dev debug neurontainer:latest",
-    "docker:ui-source": "docker extension dev ui-source neurontainer:latest http://localhost:5173"
+    "docker:ui-source": "docker extension dev ui-source neurontainer:latest http://localhost:5173",
+    "docker:validate": "docker extension validate ./metadata.json"
   },
   "keywords": [
     "docker",

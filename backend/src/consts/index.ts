@@ -17,7 +17,7 @@ type NeuroEvent =
 
 class NoderontainerConstants {
   public neuro: NeuroClient
-  public docker!: DockerClient
+  public docker?: DockerClient;
   public logger: Logger
 
   public neuroConnected = false
