@@ -1,5 +1,9 @@
 # Stage 1: Build all workspace packages
 FROM node:22 AS builder
+
+# workaround to bypass TTY prompts
+ENV CI=true
+
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY frontend/package.json ./frontend/
@@ -8,6 +12,7 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY frontend/ ./frontend/
 COPY backend/ ./backend/
 RUN pnpm -r build
+RUN pnpm install --prod
 
 # Stage 2: Final runtime image
 FROM node:22-alpine
@@ -18,7 +23,7 @@ LABEL org.opencontainers.image.title="neurontainer" \
     org.opencontainers.image.source="https://github.com/VSC-NeuroPilot/neurontainer" \
     com.docker.desktop.extension.api.version="0.3.4" \
     com.docker.extension.screenshots="" \
-    com.docker.extension.detailed-description="This container is a Docker Desktop extension that allows Neuro-sama to control the Docker daemon via the Engine API." \
+    com.docker.extension.detailed-description="This container is a Docker Desktop extension that allows Neuro-sama to control the Docker daemon via the Engine API socket." \
     com.docker.extension.publisher-url="https://vsc-neuropilot.github.io/docs" \
     com.docker.extension.additional-urls="" \
     com.docker.extension.categories="" \
@@ -37,7 +42,7 @@ COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
 
 # Copy frontend build to /ui (Docker Desktop convention)
-COPY --from=builder /app/frontend/dist /app/ui/dist
+COPY --from=builder /app/frontend/dist /ui
 COPY --from=builder /app/frontend/package.json /app/ui/package.json
 RUN ls -R /app/ui
 

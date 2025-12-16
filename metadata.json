@@ -3,7 +3,7 @@
     "ui": {
         "dashboard-tab": {
             "title": "neurontainer",
-            "root": "/app/ui/dist",
+            "root": "/ui",
             "src": "index.html"
         }
     },
