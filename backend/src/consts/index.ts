@@ -29,12 +29,15 @@ class NoderontainerConstants {
   private readonly GAME_NAME = 'neurontainer'
   private actionHandler: ((actionData: ActionData) => Promise<{ success: boolean; message: string }>) | null = null
 
-  private loadDockerClient(): void {
-    DockerClient.fromDockerConfig()
-      .then((c) => (this.docker = c))
+  private async loadDockerClient(): Promise<boolean> {
+    const client = await DockerClient.fromDockerConfig()
       .catch((e) => {
         console.error(e)
+        return undefined
       })
+    if (!client) return false
+    this.docker = client
+    return true
   }
 
   constructor() {
@@ -226,8 +229,8 @@ class NoderontainerConstants {
     await this.waitForNeuroConnection(client, this.currentNeuroUrl, 6000)
   }
 
-  public reloadDockerClient(): void {
-    this.loadDockerClient()
+  public async reloadDockerClient(): Promise<boolean> {
+    return await this.loadDockerClient()
   }
 }
 

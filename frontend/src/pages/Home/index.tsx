@@ -115,6 +115,47 @@ export function Home() {
 		}
 	};
 
+	const handleDockerReconnect = async () => {
+		try {
+			if (!ddClient) {
+				throw new Error(
+					`Docker Desktop extension API client is unavailable${ddClientInitError ? `: ${ddClientInitError}` : ''}`
+				);
+			}
+			setLoading(true);
+			setError(null);
+			setSuccess(null);
+
+			const raw = await ddClient.extension.vm.service.post('/api/reconnect/docker', {}) as any;
+			const response = normalizeResponse(raw) as any;
+
+			if (response?.success === true) {
+				setSuccess(
+					`Docker client reconnected successfully\n\nResponse:\n${stringifyAny(response)}`
+				);
+				await refreshStatus();
+				try {
+					ddClient.desktopUI.toast.success('Docker client reconnected');
+				} catch {
+					// ignore toast failures
+				}
+			} else {
+				throw new Error(response?.error || `Docker reconnect failed. Raw response:\n${stringifyAny(raw)}`);
+			}
+		} catch (err) {
+			const errorMsg = `Failed to reconnect Docker client.\n\n${stringifyAny(err)}`;
+			setError(errorMsg);
+			await refreshStatus();
+			try {
+				ddClient?.desktopUI.toast.error('Failed to reconnect Docker client');
+			} catch {
+				// ignore toast failures
+			}
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	return (
 		<Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
 			<Typography variant="h4" gutterBottom>
@@ -175,6 +216,16 @@ export function Home() {
 							size="large"
 						>
 							{loading ? <CircularProgress size={24} /> : 'Reconnect NeuroClient'}
+						</Button>
+						<Button
+							variant="contained"
+							color="secondary"
+							onClick={handleDockerReconnect}
+							disabled={loading}
+							fullWidth
+							size="large"
+						>
+							{loading ? <CircularProgress size={24} /> : 'Reconnect Docker Client'}
 						</Button>
 						<Button
 							variant="outlined"

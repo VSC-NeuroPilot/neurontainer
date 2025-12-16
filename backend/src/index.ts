@@ -172,6 +172,34 @@ app.post('/api/reconnect/neuro', async (c) => {
     return c.json({ success: false, error: message }, 500)
   }
 })
+
+app.post('/api/reconnect/docker', async (c) => {
+  try {
+    logger.info('Docker reconnect requested')
+    const result = await CONT.reloadDockerClient()
+    if (result) {
+      logger.info('Docker client reconnected successfully')
+
+      return c.json({
+        success: true,
+        message: 'Docker client reconnected successfully',
+        dockerHost: process.env.DOCKER_HOST || 'unset'
+      })
+    } else {
+      logger.error('Docker client reconnection unsuccessful')
+
+      return c.json({
+        success: false,
+        message: 'Docker client reconnection unsuccessful',
+        dockerHost: process.env.DOCKER_HOST || 'unset'
+      })
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to reconnect Docker client'
+    logger.error('Error reconnecting Docker client:', error)
+    return c.json({ success: false, error: message }, 500)
+  }
+})
   // Start the application
   ; (function () {
     // Set action handler
