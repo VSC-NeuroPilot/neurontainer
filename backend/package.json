@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@docker/node-sdk": "~0.0.17",
-    "@hono/node-server": "~1.19.6",
     "hono": "~4.10.7",
     "jsonschema": "^1.5.0",
     "neuro-game-sdk": "~1.0.5",

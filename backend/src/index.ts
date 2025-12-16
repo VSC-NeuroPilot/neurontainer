@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { DockerClient } from '@docker/node-sdk'
-import { NeuroClient } from 'neuro-game-sdk'
 import fs from 'fs'
 import { createServer } from 'node:http'
 import { CONT } from './consts'
