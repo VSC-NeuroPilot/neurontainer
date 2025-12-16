@@ -1,9 +1,6 @@
 # Stage 1: Build all workspace packages
 FROM node:22 AS builder
 
-# workaround to bypass TTY prompts
-ENV CI=true
-
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY frontend/package.json ./frontend/
@@ -12,7 +9,7 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY frontend/ ./frontend/
 COPY backend/ ./backend/
 RUN pnpm -r build
-RUN pnpm install --prod
+RUN pnpm install --prod --force
 
 # Stage 2: Final runtime image
 FROM node:22-alpine
