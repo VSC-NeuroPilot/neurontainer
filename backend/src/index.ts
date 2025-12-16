@@ -18,7 +18,7 @@ const app = new Hono()
 app.use('/*', cors())
 
 // Log every HTTP request so we can confirm UI->backend calls.
-app.use('*', async (c: any, next: any) => {
+app.use('*', async (c, next) => {
   const started = Date.now()
   const method = c.req.method
   const path = c.req.path || new URL(c.req.url).pathname
@@ -93,7 +93,7 @@ function initDockerClient() {
           error,
           `DOCKER_HOST=${process.env.DOCKER_HOST ?? 'unset'}`
         )
-        if ((error as any)?.code === 'ENOENT') {
+        if (error?.code === 'ENOENT') {
           console.error(
             'Docker socket not found. Ensure /var/run/docker.sock is mounted or DOCKER_HOST points to a reachable daemon.'
           )
@@ -110,7 +110,7 @@ async function getDockerClient() {
 }
 
 // Minimal HTTP server for configuration UI
-app.get('/', (c: any) => {
+app.get('/', (c) => {
   return c.json({
     status: 'running',
     neuro_connected: CONT.neuro?.ws?.readyState === 1,
@@ -118,7 +118,7 @@ app.get('/', (c: any) => {
   })
 })
 
-app.get('/api/status', (c: any) => {
+app.get('/api/status', (c) => {
   return c.json({
     docker: CONT.docker ? 'connected' : 'disconnected',
     neuro: CONT.neuro?.ws?.readyState === 1 ? 'connected' : 'disconnected',
@@ -132,7 +132,7 @@ app.get('/api/status', (c: any) => {
   })
 });
 
-app.get('/api/ping', (c: any) => {
+app.get('/api/ping', (c) => {
   return c.json({
     success: true,
     message: 'pong'
@@ -176,32 +176,6 @@ app.post('/api/reconnect/neuro', async (c) => {
     return c.json({ success: false, error: message }, 500)
   }
 })
-
-// Custom delete handler wired via top-level fetch wrapper (app.delete not available in this Hono build)
-async function handleDelete(req: Request) {
-  const url = new URL(req.url)
-  const match = url.pathname.match(/^\/api\/containers\/([^/]+)$/)
-  if (!match) return null
-
-  const id = match[1]
-  try {
-    const docker = await getDockerClient()
-    await docker.containerDelete(id, { force: true })
-    return Response.json({ success: true })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : `Failed to remove container ${id}`
-    return Response.json({ success: false, error: message }, { status: 500 })
-  }
-}
-
-const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
-  if (req.method === 'DELETE') {
-    const response = await handleDelete(req)
-    if (response) return response
-  }
-  return app.fetch(req, env, ctx)
-}
-
   // Start the application
   ; (function () {
     initDockerClient().catch(() => {
@@ -243,8 +217,8 @@ const fetchWithDelete = async (req: Request, env: any, ctx: any) => {
         body: body as any
       })
 
-      // Call Hono's fetch handler (which includes DELETE handling)
-      const response = await fetchWithDelete(request, {}, {})
+      // Call Hono's fetch handler
+      const response = await app.fetch(request, process.env)
 
       // Convert Web API Response back to Node.js ServerResponse
       res.writeHead(response.status, Object.fromEntries(response.headers))
