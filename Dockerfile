@@ -37,14 +37,15 @@ COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
 
 # Copy frontend build to /ui (Docker Desktop convention)
-COPY --from=builder /app/frontend/dist /ui
-RUN ls -R /ui
+COPY --from=builder /app/frontend/dist /app/ui/dist
+COPY --from=builder /app/frontend/package.json /app/ui/package.json
+RUN ls -R /app/ui
 
 # Copy backend
 WORKDIR /app/vm
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/package.json ./
 COPY --from=builder /app/backend/node_modules ./node_modules
-RUN ls -R
+RUN ls -R /app/vm
 
 CMD ["node", "dist/index.js"]
