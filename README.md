@@ -15,7 +15,7 @@ Alternatively, builds for `noderontainer` can also be pulled from VSC-NeuroPilot
 
 ### Neuro server connection
 
-- The server is connected to `ws://host.docker.internal:8000` (which is mapped to `localhost:8000`).
+- The backend server/VM is connected to `ws://host.docker.internal:8000` (which is mapped to `localhost:8000`).
 - Use the dashboard UI in Docker Desktop to configure the connected server if your Neuro server is elsewhere.
 
 ## Feature-completeness
