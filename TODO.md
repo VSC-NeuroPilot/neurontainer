@@ -7,7 +7,7 @@
 - Add a separate version for headless/non-Docker Desktop environments
   - pre-requisite: make a "shared" package with the core logic to share across both versions
   - consider making a separate web app for this as well
-- Log streaming to frontend
+- Log streaming to frontend (does WebSocket or SSE even work?)
 - Config schema & storage
 
 ## Consider these
