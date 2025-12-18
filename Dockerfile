@@ -28,7 +28,7 @@ LABEL org.opencontainers.image.title="neurontainer" \
 
 # Copy metadata to root (required by Docker Desktop)
 COPY metadata.json /metadata.json
-COPY docker.svg /docker.svg
+COPY neurontainer.svg /neurontainer.svg
 COPY docker-compose.yml /docker-compose.yml
 
 WORKDIR /app

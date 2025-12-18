@@ -1,5 +1,5 @@
 {
-    "icon": "docker.svg",
+    "icon": "neurontainer.svg",
     "ui": {
         "dashboard-tab": {
             "title": "neurontainer",
