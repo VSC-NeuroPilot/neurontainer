@@ -3,7 +3,6 @@ import { cors } from 'hono/cors'
 import { DockerClient } from '@docker/node-sdk'
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { CONT } from './consts'
 import { logger } from './utils'
@@ -11,9 +10,9 @@ import { RCEActionHandler } from './rce'
 import { actions } from './functions'
 
 const SOCKET_PATH = '/run/guest-services/backend.sock';
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const CONFIG_PATH = path.join(__dirname, '../../data/config.json');
+// Persist configuration in the Docker volume mounted at /data (see docker-compose.yml).
+// Allow override for local/dev via env.
+const CONFIG_PATH = process.env.NEURONTAINER_CONFIG_PATH || path.join('/data', 'config.json');
 
 if (fs.existsSync(SOCKET_PATH)) fs.unlinkSync(SOCKET_PATH);
 

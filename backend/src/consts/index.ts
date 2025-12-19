@@ -16,7 +16,7 @@ type NeuroEvent =
   | { type: 'reconnect_fail'; at: number; requested: string; normalized: string; error: string }
 
 class NoderontainerConstants {
-  public neuro: NeuroClient
+  public neuro!: NeuroClient
   public docker?: DockerClient;
   public logger: Logger
 
@@ -44,11 +44,7 @@ class NoderontainerConstants {
     this.logger = new Logger()
     this.currentNeuroUrl = process.env.NEURO_SERVER_URL || 'ws://host.docker.internal:8000'
 
-    // Initialize neuro client synchronously in constructor
-    this.neuro = new NeuroClient(this.currentNeuroUrl, this.GAME_NAME, () => {
-      // Connection callback will be set up in initNeuro()
-    })
-
+    // initNeuro() is responsible for creating the NeuroClient.
     this.initNeuro()
     this.loadDockerClient()
   }
@@ -171,15 +167,23 @@ class NoderontainerConstants {
   }
 
   public async reconnectNeuro(websocketUrl: string): Promise<void> {
-    // Close existing connection if present
-    if (this.neuro) {
-      try {
-        if (this.neuro.ws && this.neuro.ws.readyState !== 3) {
+    // Close existing connection if present.
+    // Important: we must disconnect even if the socket is still CONNECTING,
+    // otherwise the old client can still complete the handshake and you'll
+    // briefly have two active connections.
+    try {
+      if (this.neuro) {
+        // neuro-game-sdk provides disconnect(); use it as the most reliable option.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const maybeDisconnect = (this.neuro as any).disconnect
+        if (typeof maybeDisconnect === 'function') {
+          await maybeDisconnect.call(this.neuro)
+        } else if (this.neuro.ws && this.neuro.ws.readyState !== 3) {
           this.neuro.ws.close()
         }
-      } catch (closeError) {
-        console.warn('Error closing existing Neuro connection:', closeError)
       }
+    } catch (closeError) {
+      console.warn('Error closing existing Neuro connection:', closeError)
     }
 
     // Reset connection state
