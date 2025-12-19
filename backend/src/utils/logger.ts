@@ -36,7 +36,6 @@ export class Logger {
             transports: [
                 new winston.transports.File({
                     filename: path.join(LOG_DIR, `neurontainer-full-${getLogFileName()}.log`),
-                    zippedArchive: true
                 }),
                 new winston.transports.File({
                     filename: path.join(LOG_DIR, `neurontainer-error-${getLogFileName()}.log`),
