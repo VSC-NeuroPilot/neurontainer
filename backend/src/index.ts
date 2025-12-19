@@ -200,6 +200,35 @@ app.post('/api/reconnect/docker', async (c) => {
     return c.json({ success: false, error: message }, 500)
   }
 })
+// Graceful shutdown handler
+let isShuttingDown = false
+async function gracefulShutdown(signal: string) {
+  if (isShuttingDown) return
+  isShuttingDown = true
+
+  logger.info(`Received ${signal}, shutting down gracefully...`)
+
+  try {
+    // Disconnect NeuroClient
+    if (CONT.neuro) {
+      logger.info('Disconnecting NeuroClient...')
+      CONT.neuro.disconnect()
+      logger.info('NeuroClient disconnected')
+    }
+
+    logger.info('Shutdown complete')
+    process.exit(0)
+  } catch (error) {
+    logger.error('Error during shutdown:', error)
+    process.exit(1)
+  }
+}
+
+// Listen for shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'))
+
   // Start the application
   ; (function () {
     // Set action handler

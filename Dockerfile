@@ -8,6 +8,7 @@ COPY backend/package.json ./backend/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY frontend/ ./frontend/
 COPY backend/ ./backend/
+COPY neurontainer.svg ./
 RUN pnpm -r build
 RUN pnpm install --prod --force
 

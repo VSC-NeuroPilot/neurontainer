@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { createDockerDesktopClient } from '@docker/extension-api-client';
 import './style.css';
+import neurontainer from '../../../../neurontainer.svg';
 
 let ddClient: ReturnType<typeof createDockerDesktopClient> | undefined;
 let ddClientInitError: string | null = null;
@@ -164,6 +165,7 @@ export function Home() {
 			<Typography variant="body1" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
 				Configure and manage Neuro-sama WebSocket connection
 			</Typography>
+			<img src={neurontainer} alt="neurontainer logo" />
 			<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
 				UI build hint (should change after updates): {uiBuildHint}
 			</Typography>
