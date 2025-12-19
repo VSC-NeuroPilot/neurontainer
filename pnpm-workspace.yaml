@@ -2,3 +2,4 @@ packages:
 - "." # for changesets
 - frontend
 - backend
+- utils

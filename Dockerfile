@@ -1,7 +1,10 @@
+# syntax=docker/dockerfile:1.7
+
 # Stage 1: Build all workspace packages
 FROM node:22 AS builder
 
 WORKDIR /app
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY frontend/package.json ./frontend/
 COPY backend/package.json ./backend/
@@ -9,11 +12,16 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY frontend/ ./frontend/
 COPY backend/ ./backend/
 COPY neurontainer.svg ./
+
 RUN pnpm -r build
+
 RUN pnpm install --prod --force
 
 # Stage 2: Final runtime image
 FROM node:22-alpine
+
+ARG EXTENSION_CHANGELOG=""
+
 LABEL org.opencontainers.image.title="neurontainer" \
     org.opencontainers.image.description="Docker Desktop extension for Neuro-sama Docker control" \
     org.opencontainers.image.vendor="VSC-NeuroPilot" \
@@ -26,7 +34,7 @@ LABEL org.opencontainers.image.title="neurontainer" \
     com.docker.extension.publisher-url="https://vsc-neuropilot.github.io/docs" \
     com.docker.extension.additional-urls="" \
     com.docker.extension.categories="" \
-    com.docker.extension.changelog=""
+    com.docker.extension.changelog="${EXTENSION_CHANGELOG}"
 
 # Copy metadata to root (required by Docker Desktop)
 COPY metadata.json /metadata.json

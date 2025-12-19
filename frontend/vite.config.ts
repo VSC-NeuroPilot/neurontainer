@@ -1,10 +1,27 @@
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
+import path from 'node:path';
+import fs from 'node:fs';
+
+function resolvePublicAppVersion() {
+	try {
+		const repoRootPackageJsonPath = path.resolve(__dirname, '..', 'package.json');
+		const raw = fs.readFileSync(repoRootPackageJsonPath, 'utf-8');
+		const parsed = JSON.parse(raw) as { version?: string };
+		return parsed.version || '0.0.0';
+	} catch {
+		return '0.0.0';
+	}
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(() => {
 	const buildId = Date.now().toString(36);
+	const appVersion = resolvePublicAppVersion();
 	return {
+		define: {
+			PUBLIC_APP_VERSION: JSON.stringify(appVersion),
+		},
 		plugins: [
 			preact(),
 			{
@@ -20,7 +37,7 @@ export default defineConfig(() => {
 				},
 			},
 		],
-	// Docker Desktop serves the UI from a non-root path; use relative asset URLs.
+		// Docker Desktop serves the UI from a non-root path; use relative asset URLs.
 		base: './',
 		build: {
 			outDir: 'dist',

@@ -51,7 +51,7 @@ window.addEventListener('unhandledrejection', (e) => {
 
 export function App() {
 	const [currentTab, setCurrentTab] = useState(0);
-	const [uiBuildHint] = useState(() => String(Date.now()));
+	const appVersion = (import.meta.env.PUBLIC_APP_VERSION as string | undefined) ?? '0.0.0';
 
 	const handleTabChange = (_event: any, newValue: number) => {
 		setCurrentTab(newValue);
@@ -70,7 +70,9 @@ export function App() {
 					</Typography>
 					<img class="app-logo" src={neurontainer} alt="neurontainer logo" />
 					<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-						UI build hint (should change after updates): {uiBuildHint}
+						{import.meta.env.DEV
+							? 'Currently in dev mode'
+							: `Version v${appVersion}`}
 					</Typography>
 				</Box>
 				<Box sx={{ width: '100%', borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'center' }}>
