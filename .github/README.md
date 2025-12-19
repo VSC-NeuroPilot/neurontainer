@@ -38,5 +38,7 @@ You'll need to do the following to install it this way:
     So if you want to pull from Docker Hub, replace `<container>` with `ktrain5369/neurontainer`.
     If you want to pull from GHCR, replace `<container>` with `ghcr.io/ktrain5369/neurontainer`.
 
+    You can also search for the container on Docker Hub via the dashboard tab with the same name.
+
 - After a successful pull, run `docker extension install neurontainer:latest` to install it as an extension.
-- Every update, you'll need to pull from yoru chosen source again and run `docker extension update neurontainer:latest`.
+- Every update, you'll need to pull from your chosen source again and run `docker extension update neurontainer:latest`.
