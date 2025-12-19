@@ -5,6 +5,7 @@ import { CssBaseline, Tabs, Tab, Box, Typography } from '@mui/material';
 
 import { Home } from './pages/Home';
 import { Config } from './pages/Config';
+import { Changelog } from './pages/Changelog';
 import './style.css';
 import neurontainer from '../../neurontainer.svg';
 
@@ -76,11 +77,13 @@ export function App() {
 					<Tabs value={currentTab} onChange={handleTabChange} aria-label="neurontainer tabs">
 						<Tab label="Home" />
 						<Tab label="Configuration" />
+						<Tab label="Changelog" />
 					</Tabs>
 				</Box>
 				<Box sx={{ width: '100%', p: 0 }}>
 					{currentTab === 0 && <Home />}
 					{currentTab === 1 && <Config />}
+					{currentTab === 2 && <Changelog />}
 				</Box>
 			</main>
 		</DockerMuiV6ThemeProvider>

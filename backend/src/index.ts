@@ -13,6 +13,8 @@ const SOCKET_PATH = '/run/guest-services/backend.sock';
 // Persist configuration in the Docker volume mounted at /data (see docker-compose.yml).
 // Allow override for local/dev via env.
 const CONFIG_PATH = process.env.NEURONTAINER_CONFIG_PATH || path.join('/data', 'config.json');
+// Changelog is baked into the extension image.
+const CHANGELOG_PATH = process.env.NEURONTAINER_CHANGELOG_PATH || path.join('/app', 'CHANGELOG.md');
 
 if (fs.existsSync(SOCKET_PATH)) fs.unlinkSync(SOCKET_PATH);
 
@@ -253,6 +255,21 @@ app.get('/api/ping', (c) => {
     success: true,
     message: 'pong'
   })
+})
+
+app.get('/api/changelog', async (c) => {
+  try {
+    const markdown = await fs.promises.readFile(CHANGELOG_PATH, 'utf-8')
+    return c.json({ success: true, markdown })
+  } catch (error: any) {
+    const code = error?.code
+    const message = error instanceof Error ? error.message : String(error ?? 'Failed to read changelog')
+    logger.error('Error reading changelog:', error)
+    if (code === 'ENOENT') {
+      return c.json({ success: false, error: `Changelog not found at ${CHANGELOG_PATH}` }, 404)
+    }
+    return c.json({ success: false, error: message }, 500)
+  }
 })
 
 app.post('/api/reconnect/neuro', async (c) => {

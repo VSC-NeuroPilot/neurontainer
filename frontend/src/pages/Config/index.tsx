@@ -15,12 +15,22 @@ import {
 import { createDockerDesktopClient } from '@docker/extension-api-client';
 import './style.css';
 
+function stringifyAny(v: unknown) {
+    try {
+        if (v instanceof Error) return `${v.name}: ${v.message}\n${v.stack ?? ''}`.trim();
+        if (typeof v === 'string') return v;
+        return JSON.stringify(v, null, 2);
+    } catch {
+        return String(v);
+    }
+}
+
 let ddClient: ReturnType<typeof createDockerDesktopClient> | undefined;
 let ddClientInitError: string | null = null;
 try {
     ddClient = createDockerDesktopClient();
 } catch (err) {
-    ddClientInitError = err instanceof Error ? err.message : String(err);
+    ddClientInitError = stringifyAny(err);
     // eslint-disable-next-line no-console
     console.error('Failed to initialize Docker Desktop client', err);
 }
@@ -49,10 +59,11 @@ export function Config() {
             if (response?.success && response?.config) {
                 setConfig(response.config);
             } else {
-                throw new Error(response?.error || 'Failed to load config');
+                const errMsg = typeof response?.error === 'string' ? response.error : stringifyAny(response?.error) || 'Failed to load config';
+                throw new Error(errMsg);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
+            setError(stringifyAny(err));
         } finally {
             setLoading(false);
         }
@@ -91,10 +102,11 @@ export function Config() {
                     // ignore toast failures
                 }
             } else {
-                throw new Error(response?.error || 'Failed to save config');
+                const errMsg = typeof response?.error === 'string' ? response.error : stringifyAny(response?.error) || 'Failed to save config';
+                throw new Error(errMsg);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
+            setError(stringifyAny(err));
         } finally {
             setLoading(false);
         }

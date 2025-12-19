@@ -13,16 +13,6 @@ import {
 import { createDockerDesktopClient } from '@docker/extension-api-client';
 import './style.css';
 
-let ddClient: ReturnType<typeof createDockerDesktopClient> | undefined;
-let ddClientInitError: string | null = null;
-try {
-	ddClient = createDockerDesktopClient();
-} catch (err) {
-	ddClientInitError = err instanceof Error ? err.message : String(err);
-	// eslint-disable-next-line no-console
-	console.error('Failed to initialize Docker Desktop client', err);
-}
-
 function stringifyAny(v: unknown) {
 	try {
 		if (v instanceof Error) return `${v.name}: ${v.message}\n${v.stack ?? ''}`.trim();
@@ -31,6 +21,16 @@ function stringifyAny(v: unknown) {
 	} catch {
 		return String(v);
 	}
+}
+
+let ddClient: ReturnType<typeof createDockerDesktopClient> | undefined;
+let ddClientInitError: string | null = null;
+try {
+	ddClient = createDockerDesktopClient();
+} catch (err) {
+	ddClientInitError = stringifyAny(err);
+	// eslint-disable-next-line no-console
+	console.error('Failed to initialize Docker Desktop client', err);
 }
 
 function normalizeResponse(raw: any) {
