@@ -66,7 +66,7 @@ export function App() {
 						neurontainer - Neuro-sama Dashboard
 					</Typography>
 					<Typography variant="body1" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
-						Configure and manage Neuro-sama WebSocket connection
+						Configure and manage the Docker Neuro integration
 					</Typography>
 					<img class="app-logo" src={neurontainer} alt="neurontainer logo" />
 					<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
