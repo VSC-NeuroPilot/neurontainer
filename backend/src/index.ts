@@ -2,12 +2,18 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { DockerClient } from '@docker/node-sdk'
 import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { CONT } from './consts'
 import { logger } from './utils'
 import { RCEActionHandler } from './rce'
+import { actions } from './functions'
 
 const SOCKET_PATH = '/run/guest-services/backend.sock';
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const CONFIG_PATH = path.join(__dirname, '../../data/config.json');
 
 if (fs.existsSync(SOCKET_PATH)) fs.unlinkSync(SOCKET_PATH);
 
@@ -48,6 +54,121 @@ function resolveDockerHost(): string {
 const DEFAULT_DOCKER_HOST = resolveDockerHost()
 // Force a default DOCKER_HOST so DockerClient.fromDockerConfig works even if env is missing.
 process.env.DOCKER_HOST = DEFAULT_DOCKER_HOST
+
+// Config management
+interface ActionConfig {
+  [actionName: string]: boolean;
+}
+
+function getDefaultConfig(): ActionConfig {
+  const config: ActionConfig = {};
+  actions.forEach(action => {
+    config[action.name] = true; // All actions enabled by default
+  });
+  return config;
+}
+
+function readConfig(): ActionConfig {
+  try {
+    if (!fs.existsSync(CONFIG_PATH)) {
+      const defaultConfig = getDefaultConfig();
+      writeConfig(defaultConfig);
+      return defaultConfig;
+    }
+    const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
+    if (!data.trim()) {
+      const defaultConfig = getDefaultConfig();
+      writeConfig(defaultConfig);
+      return defaultConfig;
+    }
+    return JSON.parse(data);
+  } catch (error) {
+    logger.error('Error reading config:', error);
+    return getDefaultConfig();
+  }
+}
+
+function writeConfig(config: ActionConfig): void {
+  try {
+    const dir = path.dirname(CONFIG_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+    logger.info('Config saved');
+  } catch (error) {
+    logger.error('Error writing config:', error);
+    throw error;
+  }
+}
+
+function normalizeConfig(input: Partial<ActionConfig> | null | undefined, previous?: ActionConfig): ActionConfig {
+  const base = getDefaultConfig()
+  // Preserve previous values if caller provides them (useful for partial updates).
+  const mergedRaw: Record<string, boolean | undefined> = { ...base, ...(previous ?? {}), ...(input ?? {}) }
+  const merged: ActionConfig = {}
+  // Coerce non-boolean/undefined values defensively (treat truthy as true, falsy as false)
+  for (const name of Object.keys(mergedRaw)) {
+    merged[name] = Boolean(mergedRaw[name])
+  }
+  return merged
+}
+
+function registerActionSubset(actionSubset: typeof actions): void {
+  if (!actionSubset.length) return
+  const actionsToRegister = actionSubset.map(a => ({
+    name: a.name,
+    description: a.description,
+    schema: a.schema
+  }))
+  CONT.neuro.registerActions(actionsToRegister)
+}
+
+function applyConfigFull(config: ActionConfig): void {
+  const enabledActions = actions.filter(action => config[action.name] === true)
+  const disabledActions = actions.filter(action => config[action.name] === false)
+  logger.info(`Applying config (full): ${enabledActions.length} enabled, ${disabledActions.length} disabled`)
+
+  // Safe baseline: remove everything we know about, then add back enabled.
+  CONT.neuro.unregisterActions(actions.map(a => a.name))
+  registerActionSubset(enabledActions)
+
+  if (enabledActions.length > 0) {
+    logger.info(`Registered ${enabledActions.length} actions: ${enabledActions.map(a => a.name).join(', ')}`)
+  }
+}
+
+function applyConfigDelta(previous: ActionConfig, next: ActionConfig): void {
+  const toUnregister: string[] = []
+  const toRegister = [] as typeof actions
+
+  for (const action of actions) {
+    const before = previous[action.name] ?? true
+    const after = next[action.name] ?? true
+    if (before === after) continue
+
+    if (after) {
+      toRegister.push(action)
+    } else {
+      toUnregister.push(action.name)
+    }
+  }
+
+  logger.info(
+    `Applying config (delta): +${toRegister.length} enabled, -${toUnregister.length} disabled`
+  )
+
+  if (toUnregister.length) {
+    CONT.neuro.unregisterActions(toUnregister)
+    logger.info(`Unregistered actions: ${toUnregister.join(', ')}`)
+  }
+  if (toRegister.length) {
+    registerActionSubset(toRegister)
+    logger.info(`Registered actions: ${toRegister.map(a => a.name).join(', ')}`)
+  }
+}
+
+let currentConfig: ActionConfig = normalizeConfig(undefined)
 
 function socketPathFromDockerHost(host: string): string | null {
   if (host.startsWith('unix://')) return host.replace('unix://', '')
@@ -200,6 +321,66 @@ app.post('/api/reconnect/docker', async (c) => {
     return c.json({ success: false, error: message }, 500)
   }
 })
+
+app.get('/api/config', (c) => {
+  try {
+    const diskConfig = readConfig();
+    const normalized = normalizeConfig(diskConfig)
+    // If file was missing/partial/empty, normalize and persist so UI always sees all keys.
+    if (JSON.stringify(diskConfig) !== JSON.stringify(normalized)) {
+      try {
+        writeConfig(normalized)
+      } catch {
+        // ignore persistence failures; still return normalized
+      }
+    }
+    currentConfig = normalized
+    return c.json({ success: true, config: normalized });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to read config';
+    logger.error('Error reading config:', error);
+    return c.json({ success: false, error: message }, 500);
+  }
+});
+
+app.put('/api/config', async (c) => {
+  try {
+    const body = await c.req.json();
+    const incoming = body.config as Partial<ActionConfig>;
+
+    if (!incoming || typeof incoming !== 'object') {
+      return c.json({ success: false, error: 'Invalid config format' }, 400);
+    }
+
+    // Validate that all action names are valid
+    const validActionNames = new Set(actions.map(a => a.name));
+    for (const actionName of Object.keys(incoming)) {
+      if (!validActionNames.has(actionName)) {
+        return c.json({
+          success: false,
+          error: `Unknown action: ${actionName}`
+        }, 400);
+      }
+    }
+
+    const previous = currentConfig
+    const next = normalizeConfig(incoming, previous)
+
+    writeConfig(next);
+    applyConfigDelta(previous, next)
+    currentConfig = next
+
+    return c.json({
+      success: true,
+      message: 'Config updated and applied',
+      config: next
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update config';
+    logger.error('Error updating config:', error);
+    return c.json({ success: false, error: message }, 500);
+  }
+});
 // Graceful shutdown handler
 let isShuttingDown = false
 async function gracefulShutdown(signal: string) {
@@ -233,6 +414,11 @@ process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'))
   ; (function () {
     // Set action handler
     CONT.neuro.onAction(RCEActionHandler)
+
+    // Load and apply configuration
+    const config = normalizeConfig(readConfig());
+    currentConfig = config
+    applyConfigFull(config);
 
     // Remove existing socket if present
     if (fs.existsSync(SOCKET_PATH)) {

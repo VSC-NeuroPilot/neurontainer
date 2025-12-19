@@ -12,7 +12,6 @@ import {
 } from '@mui/material';
 import { createDockerDesktopClient } from '@docker/extension-api-client';
 import './style.css';
-import neurontainer from '../../../../neurontainer.svg';
 
 let ddClient: ReturnType<typeof createDockerDesktopClient> | undefined;
 let ddClientInitError: string | null = null;
@@ -45,14 +44,28 @@ function normalizeResponse(raw: any) {
 	return raw;
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+	let timeoutHandle: number | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutHandle = window.setTimeout(() => {
+			reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+	});
+	try {
+		return await Promise.race([promise, timeoutPromise]);
+	} finally {
+		if (timeoutHandle !== undefined) window.clearTimeout(timeoutHandle);
+	}
+}
+
 export function Home() {
 	const [websocketUrl, setWebsocketUrl] = useState('ws://host.docker.internal:8000');
 	const [backendStatus, setBackendStatus] = useState<any>(null);
-	const [loading, setLoading] = useState(false);
+	const [neuroLoading, setNeuroLoading] = useState(false);
+	const [dockerLoading, setDockerLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [lastReconnectRaw, setLastReconnectRaw] = useState<string | null>(null);
-	const [uiBuildHint] = useState(() => String(Date.now()));
 
 	const refreshStatus = async () => {
 		try {
@@ -77,14 +90,16 @@ export function Home() {
 					`Docker Desktop extension API client is unavailable${ddClientInitError ? `: ${ddClientInitError}` : ''}`
 				);
 			}
-			setLoading(true);
+			setNeuroLoading(true);
 			setError(null);
 			setSuccess(null);
 			setLastReconnectRaw(null);
 
-			const raw = await ddClient.extension.vm.service.post('/api/reconnect/neuro', {
-				websocketUrl
-			}) as any;
+			const raw = await withTimeout(
+				ddClient.extension.vm.service.post('/api/reconnect/neuro', { websocketUrl }) as any,
+				15000,
+				'Neuro reconnect request'
+			);
 			setLastReconnectRaw(stringifyAny(raw));
 			const response = normalizeResponse(raw) as any;
 
@@ -105,14 +120,16 @@ export function Home() {
 			const errorMsg = `Failed to reconnect NeuroClient.\n\n${stringifyAny(err)}`;
 			setLastReconnectRaw(`(error)\n${stringifyAny(err)}`);
 			setError(errorMsg);
-			await refreshStatus();
+			// Re-enable the button immediately; refresh status in the background.
+			setNeuroLoading(false);
+			void refreshStatus();
 			try {
 				ddClient?.desktopUI.toast.error('Failed to reconnect NeuroClient');
 			} catch {
 				// ignore toast failures
 			}
 		} finally {
-			setLoading(false);
+			setNeuroLoading(false);
 		}
 	};
 
@@ -123,11 +140,15 @@ export function Home() {
 					`Docker Desktop extension API client is unavailable${ddClientInitError ? `: ${ddClientInitError}` : ''}`
 				);
 			}
-			setLoading(true);
+			setDockerLoading(true);
 			setError(null);
 			setSuccess(null);
 
-			const raw = await ddClient.extension.vm.service.post('/api/reconnect/docker', {}) as any;
+			const raw = await withTimeout(
+				ddClient.extension.vm.service.post('/api/reconnect/docker', {}) as any,
+				15000,
+				'Docker reconnect request'
+			);
 			const response = normalizeResponse(raw) as any;
 
 			if (response?.success === true) {
@@ -146,29 +167,21 @@ export function Home() {
 		} catch (err) {
 			const errorMsg = `Failed to reconnect Docker client.\n\n${stringifyAny(err)}`;
 			setError(errorMsg);
-			await refreshStatus();
+			// Re-enable the button immediately; refresh status in the background.
+			setDockerLoading(false);
+			void refreshStatus();
 			try {
 				ddClient?.desktopUI.toast.error('Failed to reconnect Docker client');
 			} catch {
 				// ignore toast failures
 			}
 		} finally {
-			setLoading(false);
+			setDockerLoading(false);
 		}
 	};
 
 	return (
 		<Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-			<Typography variant="h4" gutterBottom>
-				neurontainer - Neuro-sama Dashboard
-			</Typography>
-			<Typography variant="body1" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
-				Configure and manage Neuro-sama WebSocket connection
-			</Typography>
-			<img src={neurontainer} alt="neurontainer logo" />
-			<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-				UI build hint (should change after updates): {uiBuildHint}
-			</Typography>
 
 			{ddClientInitError && (
 				<Alert severity="warning" sx={{ mb: 2 }}>
@@ -207,32 +220,32 @@ export function Home() {
 							fullWidth
 							placeholder="ws://localhost:8000"
 							helperText="Tip: use ws://host.docker.internal:8000 to reach a Neuro server running on your host (inside the extension container, ws://localhost points to itself)."
-							disabled={loading}
+							disabled={neuroLoading}
 						/>
 
 						<Button
 							variant="contained"
 							onClick={handleReconnect}
-							disabled={loading || !websocketUrl}
+							disabled={neuroLoading || !websocketUrl}
 							fullWidth
 							size="large"
 						>
-							{loading ? <CircularProgress size={24} /> : 'Reconnect NeuroClient'}
+							{neuroLoading ? <CircularProgress size={24} /> : 'Reconnect NeuroClient'}
 						</Button>
 						<Button
 							variant="contained"
 							color="secondary"
 							onClick={handleDockerReconnect}
-							disabled={loading}
+							disabled={dockerLoading}
 							fullWidth
 							size="large"
 						>
-							{loading ? <CircularProgress size={24} /> : 'Reconnect Docker Client'}
+							{dockerLoading ? <CircularProgress size={24} /> : 'Reconnect Docker Client'}
 						</Button>
 						<Button
 							variant="outlined"
 							onClick={refreshStatus}
-							disabled={loading}
+							disabled={neuroLoading || dockerLoading}
 							fullWidth
 							size="large"
 						>

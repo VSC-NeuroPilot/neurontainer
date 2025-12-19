@@ -1,6 +1,6 @@
 {
   "name": "neurontainer",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Docker Desktop extension for Neuro-sama Docker control",
   "private": true,
   "scripts": {
@@ -12,8 +12,10 @@
     "docker:install": "docker extension install neurontainer:latest",
     "docker:update": "docker extension update neurontainer:latest",
     "docker:uninstall": "docker extension uninstall neurontainer:latest",
+    "docker:debug": "docker extension debug neurontainer:latest",
     "docker:dev": "docker extension dev debug neurontainer:latest",
     "docker:ui-source": "docker extension dev ui-source neurontainer:latest http://localhost:5173",
+    "docker:ui-reset": "docker extension dev reset neurontainer:latest",
     "docker:validate": "docker extension validate ./metadata.json"
   },
   "keywords": [

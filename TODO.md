@@ -2,7 +2,7 @@
 
 ## Definitely do these
 
-- Full RCE system construction
+- Round out RCE system construction
 - More implementation of actions
 - Add a separate version for headless/non-Docker Desktop environments
   - pre-requisite: make a "shared" package with the core logic to share across both versions

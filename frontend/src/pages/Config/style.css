@@ -1,0 +1,15 @@
+.config-page {
+	padding: 24px;
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.config-page .MuiFormControlLabel-root {
+	width: 100%;
+	margin: 0;
+	padding: 8px 0;
+}
+
+.config-page .MuiSwitch-root {
+	margin-right: 16px;
+}

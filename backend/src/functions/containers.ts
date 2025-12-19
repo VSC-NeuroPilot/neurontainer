@@ -1,5 +1,15 @@
+import type { JSONSchema7 } from "json-schema";
 import { CONT } from "../consts";
 import type { ActionData, ActionResult, RCEAction } from "../types/rce";
+
+const containerTargetSchema: JSONSchema7 = {
+    type: "object",
+    properties: {
+        container: {
+            type: "string"
+        }
+    }
+}
 
 export const containerActions: RCEAction[] = [
     {
@@ -10,21 +20,25 @@ export const containerActions: RCEAction[] = [
     {
         name: 'start_container',
         description: 'Start a stopped Docker container by name or ID.',
+        schema: containerTargetSchema,
         handler: handleStartContainer,
     },
     {
         name: 'stop_container',
         description: 'Stop a running Docker container by name or ID.',
+        schema: containerTargetSchema,
         handler: handleStopContainer,
     },
     {
         name: 'restart_container',
         description: 'Restart a running Docker container by name or ID.',
+        schema: containerTargetSchema,
         handler: handleRestartContainer,
     },
     {
         name: 'remove_container',
         description: 'Remove an existing Docker container by name or ID.',
+        schema: containerTargetSchema,
         handler: handleRemoveContainer,
     }
 ];
