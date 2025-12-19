@@ -6,14 +6,7 @@
 
 <p align="center"><img src="./neurontainer.svg" width="512" alt="neurontainer logo by Pasu4"></p>
 
-## Usage
-
-Docker must be downloaded and installed from [the official Docker website](https://www.docker.com/).
-Once installed, look for the `neurontainer` image, and install it.
-
-Alternatively, builds for `noderontainer` can also be pulled from VSC-NeuroPilot's GitHub Container Registry `(ghcr.io)`.
-
-### Neuro server connection
+## Neuro server connection
 
 - The backend server/VM is connected to `ws://host.docker.internal:8000` (which is mapped to `localhost:8000`).
 - Use the dashboard UI in Docker Desktop to configure the connected server if your Neuro server is elsewhere.

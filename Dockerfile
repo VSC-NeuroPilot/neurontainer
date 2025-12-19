@@ -23,7 +23,7 @@ FROM node:22-alpine
 ARG EXTENSION_CHANGELOG=""
 
 LABEL org.opencontainers.image.title="neurontainer" \
-    org.opencontainers.image.description="Docker Desktop extension for Neuro-sama Docker control" \
+    org.opencontainers.image.description="Docker Desktop extension for Neuro-sama to control Docker" \
     org.opencontainers.image.vendor="VSC-NeuroPilot" \
     org.opencontainers.image.license="MIT" \
     org.opencontainers.image.source="https://github.com/VSC-NeuroPilot/neurontainer" \
