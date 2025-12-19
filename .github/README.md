@@ -4,7 +4,7 @@
 
 `neurontainer` (pronounced neuron-tainer, all lowercase) is a Neuro integration that allows Neuro to communicate and control the Docker daemon, via the Docker Engine API.
 
-<p align="center"><img src="./neurontainer.svg" width="512" alt="neurontainer logo by Pasu4"></p>
+<p align="center"><img src="../neurontainer.svg" width="512" alt="neurontainer logo by Pasu4"></p>
 
 ## Usage
 
