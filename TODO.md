@@ -9,6 +9,10 @@
   - consider making a separate web app for this as well
 - Log streaming to frontend (does WebSocket or SSE even work?)
 - Config schema & storage
+- Logging verbosity setting (e.g. error/warn/info/debug)
+- Toggle for separate error log file output
+- Cookie count
+- ESLint rules (catching `erm`s when)
 
 ## Consider these
 

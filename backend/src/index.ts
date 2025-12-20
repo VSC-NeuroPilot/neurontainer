@@ -1,20 +1,21 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { DockerClient } from '@docker/node-sdk'
 import fs from 'fs'
-import path from 'path'
 import { createServer } from 'node:http'
 import { CONT } from './consts'
 import { logger } from './utils'
 import { RCEActionHandler } from './rce'
 import { actions } from './functions'
+import {
+  normalizeConfig,
+  readConfig,
+  validateIncomingConfig,
+  writeConfig,
+  type ActionConfig,
+} from './config/permissions'
+import { CHANGELOG_PATH, CONFIG_PATH } from './config/paths'
 
 const SOCKET_PATH = '/run/guest-services/backend.sock';
-// Persist configuration in the Docker volume mounted at /data (see docker-compose.yml).
-// Allow override for local/dev via env.
-const CONFIG_PATH = process.env.NEURONTAINER_CONFIG_PATH || path.join('/data', 'config.json');
-// Changelog is baked into the extension image.
-const CHANGELOG_PATH = process.env.NEURONTAINER_CHANGELOG_PATH || path.join('/app', 'CHANGELOG.md');
 
 if (fs.existsSync(SOCKET_PATH)) fs.unlinkSync(SOCKET_PATH);
 
@@ -39,81 +40,7 @@ app.use('*', async (c, next) => {
   }
 })
 
-// Configuration
-function resolveDockerHost(): string {
-  const envHost = process.env.DOCKER_HOST
-  // If running inside container (linux) but host provided a Windows npipe, fall back to socket
-  if (envHost && process.platform !== 'win32' && envHost.startsWith('npipe:')) {
-    return 'unix:///var/run/docker.sock'
-  }
-  if (envHost) return envHost
-  return process.platform === 'win32'
-    ? 'npipe:////./pipe/docker_engine'
-    : 'unix:///var/run/docker.sock'
-}
-
-const DEFAULT_DOCKER_HOST = resolveDockerHost()
-// Force a default DOCKER_HOST so DockerClient.fromDockerConfig works even if env is missing.
-process.env.DOCKER_HOST = DEFAULT_DOCKER_HOST
-
-// Config management
-interface ActionConfig {
-  [actionName: string]: boolean;
-}
-
-function getDefaultConfig(): ActionConfig {
-  const config: ActionConfig = {};
-  actions.forEach(action => {
-    config[action.name] = true; // All actions enabled by default
-  });
-  return config;
-}
-
-function readConfig(): ActionConfig {
-  try {
-    if (!fs.existsSync(CONFIG_PATH)) {
-      const defaultConfig = getDefaultConfig();
-      writeConfig(defaultConfig);
-      return defaultConfig;
-    }
-    const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    if (!data.trim()) {
-      const defaultConfig = getDefaultConfig();
-      writeConfig(defaultConfig);
-      return defaultConfig;
-    }
-    return JSON.parse(data);
-  } catch (error) {
-    logger.error('Error reading config:', error);
-    return getDefaultConfig();
-  }
-}
-
-function writeConfig(config: ActionConfig): void {
-  try {
-    const dir = path.dirname(CONFIG_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-    logger.info('Config saved');
-  } catch (error) {
-    logger.error('Error writing config:', error);
-    throw error;
-  }
-}
-
-function normalizeConfig(input: Partial<ActionConfig> | null | undefined, previous?: ActionConfig): ActionConfig {
-  const base = getDefaultConfig()
-  // Preserve previous values if caller provides them (useful for partial updates).
-  const mergedRaw: Record<string, boolean | undefined> = { ...base, ...(previous ?? {}), ...(input ?? {}) }
-  const merged: ActionConfig = {}
-  // Coerce non-boolean/undefined values defensively (treat truthy as true, falsy as false)
-  for (const name of Object.keys(mergedRaw)) {
-    merged[name] = Boolean(mergedRaw[name])
-  }
-  return merged
-}
+// NOTE: config read/write/normalize/validation lives in ./config/permissions now
 
 function registerActionSubset(actionSubset: typeof actions): void {
   if (!actionSubset.length) return
@@ -169,63 +96,9 @@ function applyConfigDelta(previous: ActionConfig, next: ActionConfig): void {
   }
 }
 
-let currentConfig: ActionConfig = normalizeConfig(undefined)
-
-function socketPathFromDockerHost(host: string): string | null {
-  if (host.startsWith('unix://')) return host.replace('unix://', '')
-  return null
-}
-
-function dockerSocketExists(): boolean {
-  const socketPath = socketPathFromDockerHost(process.env.DOCKER_HOST || '')
-  return socketPath ? fs.existsSync(socketPath) : false
-}
+let currentConfig: ActionConfig = normalizeConfig(actions, undefined)
 
 const GAME_NAME = 'neurontainer'
-
-let dockerClientPromise: Promise<DockerClient> | null = null
-
-function initDockerClient() {
-  if (!dockerClientPromise) {
-    const dockerHost = process.env.DOCKER_HOST || DEFAULT_DOCKER_HOST
-    logger.info('Initializing Docker client...')
-    logger.info(`DOCKER_HOST: ${dockerHost}`)
-    if (!dockerSocketExists()) {
-      logger.warn(`Docker socket not found at ${socketPathFromDockerHost(dockerHost) || '<none>'}`)
-    }
-
-    // Explicitly respect the resolved host (supports npipe on Windows host, unix socket in container)
-    dockerClientPromise = DockerClient.fromDockerHost(dockerHost)
-      .then(async (client) => {
-        CONT.docker = client
-        // Test the connection
-        try {
-          await client.systemPing()
-          logger.info('Docker client connected and verified')
-        } catch (pingError) {
-          logger.error('Docker ping failed:', pingError)
-          throw pingError
-        }
-        return client
-      })
-      .catch((error) => {
-        dockerClientPromise = null
-        console.error(
-          'Failed to initialize Docker client',
-          error,
-          `DOCKER_HOST=${process.env.DOCKER_HOST ?? 'unset'}`
-        )
-        if (error?.code === 'ENOENT') {
-          console.error(
-            'Docker socket not found. Ensure /var/run/docker.sock is mounted or DOCKER_HOST points to a reachable daemon.'
-          )
-        }
-        throw error
-      })
-  }
-
-  return dockerClientPromise
-}
 
 // Minimal HTTP server for configuration UI
 app.get('/', (c) => {
@@ -340,18 +213,18 @@ app.post('/api/reconnect/docker', async (c) => {
 
 app.get('/api/config', (c) => {
   try {
-    const diskConfig = readConfig();
-    const normalized = normalizeConfig(diskConfig)
+    const diskConfig = readConfig(actions, CONFIG_PATH, logger)
+    const normalized = normalizeConfig(actions, diskConfig)
     // If file was missing/partial/empty, normalize and persist so UI always sees all keys.
     if (JSON.stringify(diskConfig) !== JSON.stringify(normalized)) {
       try {
-        writeConfig(normalized)
+        writeConfig(CONFIG_PATH, normalized, logger)
       } catch {
         // ignore persistence failures; still return normalized
       }
     }
     currentConfig = normalized
-    return c.json({ success: true, config: normalized });
+    return c.json({ success: true, config: { permissions: normalized } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to read config';
     logger.error('Error reading config:', error);
@@ -362,34 +235,23 @@ app.get('/api/config', (c) => {
 app.put('/api/config', async (c) => {
   try {
     const body = await c.req.json();
-    const incoming = body.config as Partial<ActionConfig>;
-
-    if (!incoming || typeof incoming !== 'object') {
-      return c.json({ success: false, error: 'Invalid config format' }, 400);
+    const incomingResult = validateIncomingConfig(actions, body?.config?.permissions)
+    if (!incomingResult.ok) {
+      return c.json({ success: false, error: incomingResult.error }, 400)
     }
-
-    // Validate that all action names are valid
-    const validActionNames = new Set(actions.map(a => a.name));
-    for (const actionName of Object.keys(incoming)) {
-      if (!validActionNames.has(actionName)) {
-        return c.json({
-          success: false,
-          error: `Unknown action: ${actionName}`
-        }, 400);
-      }
-    }
+    const incoming = incomingResult.value
 
     const previous = currentConfig
-    const next = normalizeConfig(incoming, previous)
+    const next = normalizeConfig(actions, incoming, previous)
 
-    writeConfig(next);
+    writeConfig(CONFIG_PATH, next, logger)
     applyConfigDelta(previous, next)
     currentConfig = next
 
     return c.json({
       success: true,
       message: 'Config updated and applied',
-      config: next
+      config: { permissions: next }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update config';
@@ -432,7 +294,7 @@ process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'))
     CONT.neuro.onAction(RCEActionHandler)
 
     // Load and apply configuration
-    const config = normalizeConfig(readConfig());
+    const config = normalizeConfig(actions, readConfig(actions, CONFIG_PATH, logger))
     currentConfig = config
     applyConfigFull(config);
 

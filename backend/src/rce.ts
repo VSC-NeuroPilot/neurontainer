@@ -2,6 +2,8 @@ import type { ActionData, ActionResult } from "./types/rce";
 import { CONT, ERROR_MSG_REFERENCE } from "./consts";
 import { actions } from "./functions";
 import { validate } from "jsonschema";
+import { readConfig } from "./config/permissions";
+import { CONFIG_PATH } from "./config/paths";
 
 export async function RCEActionHandler(actionData: ActionData): Promise<void> {
     console.log(`Received action from Neuro: ${actionData.name}`, actionData.params);
@@ -16,6 +18,22 @@ export async function RCEActionHandler(actionData: ActionData): Promise<void> {
         CONT.neuro.sendActionResult(actionData.id, true, 'Unknown action.');
         return;
     };
+
+    // Permission backup: even if an action is still registered for any reason,
+    // refuse execution if the persisted permissions disable it.
+    try {
+        const permissions = readConfig(actions, CONFIG_PATH, CONT.logger)
+        if (permissions[actionData.name] === false) {
+            const msg = `Action "${actionData.name}" is disabled by permissions.`
+            CONT.logger.warn(msg)
+            CONT.neuro.sendActionResult(actionData.id, false, msg)
+            return;
+        }
+    } catch (err) {
+        CONT.logger.error('Permission check failed:', err)
+        CONT.neuro.sendActionResult(actionData.id, true, `Failed to check your access to this action! ${ERROR_MSG_REFERENCE}`)
+        return;
+    }
 
     if (action.schema) {
         const result = validate(actionData.params, action.schema, { required: true });

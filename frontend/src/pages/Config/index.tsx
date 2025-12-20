@@ -56,8 +56,9 @@ export function Config() {
             setError(null);
 
             const response = await ddClient.extension.vm.service.get('/api/config') as any;
-            if (response?.success && response?.config) {
-                setConfig(response.config);
+            const permissions = response?.config?.permissions;
+            if (response?.success && permissions && typeof permissions === 'object') {
+                setConfig(permissions as ActionConfig);
             } else {
                 const errMsg = typeof response?.error === 'string' ? response.error : stringifyAny(response?.error) || 'Failed to load config';
                 throw new Error(errMsg);
@@ -91,7 +92,7 @@ export function Config() {
             setSuccess(null);
 
             const response = await ddClient.extension.vm.service.put('/api/config', {
-                config
+                config: { permissions: config }
             }) as any;
 
             if (response?.success) {
