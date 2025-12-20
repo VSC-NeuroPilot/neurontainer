@@ -16,7 +16,7 @@ type NeuroEvent =
   | { type: 'reconnect_fail'; at: number; requested: string; normalized: string; error: string }
 
 class NoderontainerConstants {
-  public neuro!: NeuroClient
+  public neuro: NeuroClient
   public docker?: DockerClient;
   public logger: Logger
 
@@ -45,7 +45,7 @@ class NoderontainerConstants {
     this.currentNeuroUrl = process.env.NEURO_SERVER_URL || 'ws://host.docker.internal:8000'
 
     // initNeuro() is responsible for creating the NeuroClient.
-    this.initNeuro()
+    this.neuro = this.initNeuro()
     this.loadDockerClient()
   }
 
@@ -74,14 +74,12 @@ class NoderontainerConstants {
   }
 
   public initNeuro() {
-    if (this.neuroConnected) return
-
     this.logger.info(`Trying Neuro server: ${this.currentNeuroUrl}`)
     this.setLastNeuroEvent({ type: 'connect_attempt', at: Date.now(), url: this.currentNeuroUrl })
     const gen = ++this.neuroGeneration
 
     // Create a new client with proper callback
-    this.neuro = new NeuroClient(this.currentNeuroUrl, this.GAME_NAME, () => {
+    const client = new NeuroClient(this.currentNeuroUrl, this.GAME_NAME, () => {
       if (gen !== this.neuroGeneration) return
       this.neuroConnected = true
       const wsInfo = this.describeWs(this.neuro?.ws)
@@ -94,12 +92,12 @@ class NoderontainerConstants {
       if (this.actionHandler) {
         this.neuro.onAction(async (actionData) => {
           const result = await this.actionHandler!(actionData)
-          this.neuro.sendActionResult(actionData.id, result.success, result.message)
+          client.sendActionResult(actionData.id, result.success, result.message)
         })
       }
 
       // Send initial context to Neuro
-      this.neuro.sendContext('neurontainer is now connected and ready to manage Docker containers', false)
+      client.sendContext('neurontainer is now connected and ready to manage Docker containers', false)
     })
 
     const handleError = (errLabel: string, err?: unknown) => {
@@ -115,11 +113,11 @@ class NoderontainerConstants {
       })
     }
 
-    this.neuro.onError = (e) => {
+    client.onError = (e) => {
       handleError('Neuro client error', e)
     }
 
-    this.neuro.onClose = (e) => {
+    client.onClose = (e) => {
       if (gen !== this.neuroGeneration) return
       const code = e?.code ?? e?.kCode ?? 'unknown'
       const reason = e?.reason ?? e?.kReason ?? ''
@@ -134,6 +132,8 @@ class NoderontainerConstants {
         reason: String(reason)
       })
     }
+
+    return client
   }
 
   public normalizeNeuroUrl(input: string): { original: string; normalized: string; note?: string } {
@@ -175,9 +175,9 @@ class NoderontainerConstants {
       if (this.neuro) {
         // neuro-game-sdk provides disconnect(); use it as the most reliable option.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const maybeDisconnect = (this.neuro as any).disconnect
+        const maybeDisconnect = this.neuro.disconnect
         if (typeof maybeDisconnect === 'function') {
-          await maybeDisconnect.call(this.neuro)
+          maybeDisconnect.call(this.neuro)
         } else if (this.neuro.ws && this.neuro.ws.readyState !== 3) {
           this.neuro.ws.close()
         }
@@ -191,10 +191,10 @@ class NoderontainerConstants {
     this.currentNeuroUrl = websocketUrl
     const gen = ++this.neuroGeneration
 
-    const client = new NeuroClient(this.currentNeuroUrl, this.GAME_NAME, () => {
+    this.neuro = new NeuroClient(this.currentNeuroUrl, this.GAME_NAME, () => {
       if (gen !== this.neuroGeneration) return
       this.neuroConnected = true
-      const wsInfo = this.describeWs(client?.ws)
+      const wsInfo = this.describeWs(this.neuro?.ws)
       console.log(`Reconnected to Neuro-sama server at ${this.currentNeuroUrl} ${wsInfo}`)
       this.setLastNeuroEvent({ type: 'connected', at: Date.now(), url: this.currentNeuroUrl, ws: wsInfo })
 
@@ -205,20 +205,19 @@ class NoderontainerConstants {
 
       this.neuro.sendContext('neurontainer reconnected and ready to manage Docker containers', false)
     })
-    this.neuro = client
 
-    client.onError = (e) => {
+    this.neuro.onError = (e) => {
       if (gen !== this.neuroGeneration) return
-      const wsInfo = this.describeWs(client?.ws)
+      const wsInfo = this.describeWs(this.neuro?.ws)
       CONT.logger.error(`Neuro client error (url=${this.currentNeuroUrl}). ${wsInfo}`, e)
       this.setLastNeuroEvent({ type: 'error', at: Date.now(), url: this.currentNeuroUrl, ws: wsInfo, error: this.errToString(e) })
     }
 
-    client.onClose = (e) => {
+    this.neuro.onClose = (e) => {
       if (gen !== this.neuroGeneration) return
       const code = e?.code ?? e?.kCode ?? 'unknown'
       const reason = e?.reason ?? e?.kReason ?? ''
-      const wsInfo = this.describeWs(client?.ws)
+      const wsInfo = this.describeWs(this.neuro?.ws)
       CONT.logger.warn(`Neuro client closed (code=${code}, reason=${reason}) url=${this.currentNeuroUrl}. ${wsInfo}`)
       this.setLastNeuroEvent({
         type: 'close',
@@ -230,7 +229,7 @@ class NoderontainerConstants {
       })
     }
 
-    await this.waitForNeuroConnection(client, this.currentNeuroUrl, 6000)
+    await this.waitForNeuroConnection(this.neuro, this.currentNeuroUrl, 6000)
   }
 
   public async reloadDockerClient(): Promise<boolean> {
