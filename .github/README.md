@@ -36,7 +36,7 @@ You'll need to do the following to install it this way:
     `<container>` refers to the repository location, stated above in codeblocks.
 
     So if you want to pull from Docker Hub, replace `<container>` with `ktrain5369/neurontainer`.
-    If you want to pull from GHCR, replace `<container>` with `ghcr.io/ktrain5369/neurontainer`.
+    If you want to pull from GHCR, replace `<container>` with `ghcr.io/VSC-NeuroPilot/neurontainer`.
 
     You can also search for the container on Docker Hub via the dashboard tab with the same name.
 
