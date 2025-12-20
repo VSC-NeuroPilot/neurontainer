@@ -18,4 +18,4 @@
 
 - Switch from official Node.js Docker Engine SDK to a more complete community-maintained one
 - Use Fastify instead of Hono as the web framework
-- Unit testing
+- Unit testing (Vitest & Mocha/Jest)
