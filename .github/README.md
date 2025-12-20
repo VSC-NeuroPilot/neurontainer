@@ -42,3 +42,7 @@ You'll need to do the following to install it this way:
 
 - After a successful pull, run `docker extension install neurontainer:latest` to install it as an extension.
 - Every update, you'll need to pull from your chosen source again and run `docker extension update neurontainer:latest`.
+
+### Headless environments
+
+An executable binary is planned for headless or otherwise non-Docker Desktop environments, but is currently unreleased.
