@@ -1,5 +1,6 @@
 {
 	"name": "ui",
+	"version": "neurontainer",
 	"private": true,
 	"type": "module",
 	"scripts": {

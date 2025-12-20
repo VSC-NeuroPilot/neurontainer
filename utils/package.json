@@ -1,5 +1,6 @@
 {
     "name": "utils",
+    "version": "neurontainer",
     "private": true,
     "type": "module",
     "devDependencies": {

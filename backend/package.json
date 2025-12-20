@@ -1,5 +1,6 @@
 {
   "name": "vm",
+  "version": "neurontainer",
   "private": true,
   "type": "module",
   "scripts": {
