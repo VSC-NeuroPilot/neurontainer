@@ -14,11 +14,6 @@
     "hono": "~4.10.7",
     "jsonschema": "^1.5.0",
     "neuro-game-sdk": "~1.0.5",
-    "rehype-sanitize": "^6.0.0",
-    "rehype-stringify": "^10.0.1",
-    "remark-parse": "^11.0.0",
-    "remark-rehype": "^11.1.2",
-    "unified": "^11.0.5",
     "winston": "~3.18.3",
     "winston-transport": "~4.9.0"
   },
