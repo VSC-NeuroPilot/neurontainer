@@ -40,6 +40,7 @@ LABEL org.opencontainers.image.title="neurontainer" \
 COPY metadata.json /metadata.json
 COPY neurontainer.svg /neurontainer.svg
 COPY docker-compose.yml /docker-compose.yml
+COPY CHANGELOG.md /app/CHANGELOG.md
 
 WORKDIR /app
 COPY --from=builder /app/package.json ./

@@ -9,6 +9,12 @@
  * - `## [v1.2.3] — 2025-01-01`
  */
 
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import rehypeSanitize from 'rehype-sanitize';
+import rehypeStringify from 'rehype-stringify';
+
 export type ChangelogEntry = {
     /** Normalized version (no leading "v"). */
     version: string;
@@ -24,10 +30,21 @@ export type ExtractChangelogEntryOptions = {
      * sections are not accidentally returned.
      */
     stripHtmlComments?: boolean;
+    /**
+     * If true (default), ignores SemVer build metadata (`+build.1`) when matching versions.
+     * This helps match tags like `1.2.3+build.1` against headings like `## 1.2.3`.
+     */
+    ignoreBuildMetadata?: boolean;
 };
 
-function normalizeVersion(v: string): string {
-    return v.trim().replace(/^refs\/tags\//, '').replace(/^v/i, '');
+function stripBuildMetadata(v: string): string {
+    const idx = v.indexOf('+');
+    return idx === -1 ? v : v.slice(0, idx);
+}
+
+function normalizeVersion(v: string, ignoreBuildMetadata: boolean): string {
+    const cleaned = v.trim().replace(/^refs\/tags\//, '').replace(/^v/i, '');
+    return ignoreBuildMetadata ? stripBuildMetadata(cleaned) : cleaned;
 }
 
 function normalizeMarkdown(md: string, stripHtmlComments: boolean): string {
@@ -37,21 +54,24 @@ function normalizeMarkdown(md: string, stripHtmlComments: boolean): string {
 
 type Heading = { lineIndex: number; version: string; heading: string };
 
-function findVersionHeadings(markdown: string): Heading[] {
+function findVersionHeadings(markdown: string, ignoreBuildMetadata: boolean): Heading[] {
     const lines = markdown.split('\n');
 
     // Match common formats like:
     // ## 1.2.3
     // ## v1.2.3
     // ## [1.2.3] - 2025-01-01
-    const headingRe = /^##\s*(?:\[)?v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\])?(?:\s+[-–—].*)?$/;
+    // Also supports SemVer prerelease/build metadata:
+    // ## 1.2.3-rc.1+build.7
+    const headingRe =
+        /^##\s*(?:\[)?v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)(?:\])?(?:\s+[-–—].*)?$/;
 
     const headings: Heading[] = [];
     for (let i = 0; i < lines.length; i++) {
         const m = lines[i].match(headingRe);
         const ver = m?.[1];
         if (!ver) continue;
-        headings.push({ lineIndex: i, version: normalizeVersion(ver), heading: lines[i] });
+        headings.push({ lineIndex: i, version: normalizeVersion(ver, ignoreBuildMetadata), heading: lines[i] });
     }
     return headings;
 }
@@ -69,10 +89,11 @@ export function extractChangelogEntry(
     options: ExtractChangelogEntryOptions = {},
 ): ChangelogEntry | null {
     const strip = options.stripHtmlComments ?? true;
+    const ignoreBuild = options.ignoreBuildMetadata ?? true;
     const md = normalizeMarkdown(markdown, strip);
-    const wanted = normalizeVersion(version);
+    const wanted = normalizeVersion(version, ignoreBuild);
 
-    const headings = findVersionHeadings(md);
+    const headings = findVersionHeadings(md, ignoreBuild);
     if (headings.length === 0) return null;
 
     const idx = headings.findIndex(h => h.version === wanted);
@@ -99,4 +120,31 @@ export function extractChangelogEntryBody(
     options: ExtractChangelogEntryOptions = {},
 ): string | null {
     return extractChangelogEntry(markdown, version, options)?.body ?? null;
+}
+
+export async function renderMarkdownToHtml(markdown: string): Promise<string> {
+    const file = await unified()
+        .use(remarkParse)
+        .use(remarkRehype)
+        .use(rehypeSanitize)
+        .use(rehypeStringify)
+        .process(markdown);
+
+    return String(file);
+}
+
+/**
+ * Extract a version entry and render it to sanitized HTML.
+ *
+ * The rendered HTML includes the version heading as an `<h2>` (via markdown `## ...`).
+ */
+export async function extractChangelogEntryHtml(
+    markdown: string,
+    version: string,
+    options: ExtractChangelogEntryOptions = {},
+): Promise<string | null> {
+    const entry = extractChangelogEntry(markdown, version, options);
+    if (!entry) return null;
+    const md = `${entry.heading}\n\n${entry.body}`.trim();
+    return await renderMarkdownToHtml(md);
 }
