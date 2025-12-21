@@ -26,4 +26,5 @@ Implementation of missing features will be considered on a case-by-case basis. Y
 
 - `neurontainer` is part of VSC-NeuroPilot. You can learn more about us [on our GitHub page](https://github.com/VSC-NeuroPilot).
 - This project is licensed under the MIT license.
+- You can find a list of planned features in our to-do Markdown file on the GitHub repo.
 - The image includes the `package.json` files for the frontend, backend and main root, as well as the pnpm lockfile. You can use this to inspect the dependency tree of the tools we use.
