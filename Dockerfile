@@ -50,7 +50,6 @@ COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 # Copy pnpm store so linked deps (e.g., @hono/node-server) are available at runtime
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/utils/package.json ./utils/package.json
 
 # Copy frontend build to /ui (Docker Desktop convention)
 COPY --from=builder /app/frontend/dist /ui
@@ -63,5 +62,8 @@ COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/package.json ./
 COPY --from=builder /app/backend/node_modules ./node_modules
 RUN ls -R /app/vm
+
+COPY --from=builder /app/utils/package.json /app/utils/package.json
+COPY LICENSE README.md TODO.md /app/
 
 CMD ["node", "dist/index.js"]
