@@ -46,3 +46,16 @@ You'll need to do the following to install it this way:
 ### Headless environments
 
 An executable binary is planned for headless or otherwise non-Docker Desktop environments, but is currently unreleased.
+
+## Limitations
+
+There's a couple limitations with the integration right now. You should view the [container's README.md file](../README.md) for more info.
+You can also look at [our to-do list](../TODO.md) to see what we have planned.
+
+## Other info
+
+This extension uses the [TypeScript Neuro Game SDK by AriesAlex](https://github.com/AriesAlex/typescrit-neuro-game-sdk).
+
+Icon by [Pasu4](https://github.com/Pasu4).
+
+Documentation coming soon!
