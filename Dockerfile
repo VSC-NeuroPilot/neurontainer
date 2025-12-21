@@ -8,14 +8,16 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY frontend/package.json ./frontend/
 COPY backend/package.json ./backend/
+COPY utils/package.json ./utils/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY frontend/ ./frontend/
 COPY backend/ ./backend/
+COPY utils/ ./utils/
 COPY neurontainer.svg ./
 
 RUN pnpm -r build
 
-RUN pnpm install --prod --force
+RUN pnpm install --prod --force --frozen-lockfile
 
 # Stage 2: Final runtime image
 FROM node:22-alpine
@@ -48,6 +50,7 @@ COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 # Copy pnpm store so linked deps (e.g., @hono/node-server) are available at runtime
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/utils/package.json ./utils/package.json
 
 # Copy frontend build to /ui (Docker Desktop convention)
 COPY --from=builder /app/frontend/dist /ui
