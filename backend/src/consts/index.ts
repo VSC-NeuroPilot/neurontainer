@@ -26,7 +26,7 @@ class NoderontainerConstants {
   public lastNeuroEvent: NeuroEvent | null = null
   public lastReconnectRequest: { requested: string; normalized: string; note?: string; at: number } | null = null
 
-  private readonly GAME_NAME = 'neurontainer'
+  private readonly GAME_NAME = 'Docker Desktop'
   private actionHandler: ((actionData: ActionData) => Promise<{ success: boolean; message: string }>) | null = null
 
   private async loadDockerClient(): Promise<boolean> {
