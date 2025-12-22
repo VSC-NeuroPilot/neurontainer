@@ -2,4 +2,4 @@
 "neurontainer": patch
 ---
 
-change initial context
+Change initial context sent to Neuro after startup.
