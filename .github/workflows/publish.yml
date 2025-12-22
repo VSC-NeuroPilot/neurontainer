@@ -51,6 +51,7 @@ jobs:
           version: pnpm changeset version
           commit: bump `neurontainer` version
           title: Bump neurontainer's version
+          publish: pnpm run publish
           createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,7 +60,7 @@ jobs:
         id: release
         if: steps.changesets.outputs.hasChangesets == 'false'
         run: |
-          VERSION="$(pnpm -s info ./ version)"
+          VERSION="$(pnpm info ./ version)"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
