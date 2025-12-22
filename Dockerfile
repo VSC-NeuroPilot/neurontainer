@@ -30,12 +30,12 @@ LABEL org.opencontainers.image.title="neurontainer" \
     org.opencontainers.image.license="MIT" \
     org.opencontainers.image.source="https://github.com/VSC-NeuroPilot/neurontainer" \
     com.docker.desktop.extension.api.version="0.3.4" \
-    com.docker.desktop.extension.icon="/neurontainer.svg" \
-    com.docker.extension.screenshots="" \
+    com.docker.desktop.extension.icon="https://vsc-neuropilot.github.io/docs/neurontainer.svg" \
+    com.docker.extension.screenshots=[{"alt":"Actions list","url":"https://vsc-neuropilot.github.io/docs/actions-list.png"},{"alt":"Home control page","url":"https://vsc-neuropilot.github.io/docs/homepage.png"}] \
     com.docker.extension.detailed-description="This container is a Docker Desktop extension that allows Neuro-sama to control the Docker daemon via the Engine API socket." \
     com.docker.extension.publisher-url="https://vsc-neuropilot.github.io/docs" \
     com.docker.extension.additional-urls="" \
-    com.docker.extension.categories="" \
+    com.docker.extension.categories="Utility tools" \
     com.docker.extension.changelog="${EXTENSION_CHANGELOG}"
 
 # Copy metadata to root (required by Docker Desktop)
