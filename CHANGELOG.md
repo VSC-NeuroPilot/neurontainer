@@ -1,5 +1,11 @@
 # neurontainer
 
+## 1.0.3
+
+### Patch Changes
+
+- 4e22196: let this be a lesson to always check your paths for 404s
+
 ## 1.0.2
 
 ### Patch Changes
