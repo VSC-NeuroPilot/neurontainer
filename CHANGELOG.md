@@ -1,5 +1,11 @@
 # neurontainer
 
+## 1.0.1
+
+### Patch Changes
+
+- 9747c07: Mostly meta changes before proper announcement
+
 ## 1.0.0
 
 ### Major Changes
