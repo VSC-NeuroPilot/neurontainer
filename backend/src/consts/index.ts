@@ -97,7 +97,7 @@ class NoderontainerConstants {
       }
 
       // Send initial context to Neuro
-      client.sendContext('neurontainer is now connected and ready to manage Docker containers', false)
+      client.sendContext('Welcome to Docker, a containerization platform for apps. You are connected to the Docker Engine API, which will allow you to control Docker using the actions registered.')
     })
 
     const handleError = (errLabel: string, err?: unknown) => {
