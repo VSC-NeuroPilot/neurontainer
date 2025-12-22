@@ -1,5 +1,11 @@
 # neurontainer
 
+## 1.0.2
+
+### Patch Changes
+
+- c12513f: hopefully fix dockerfile to make it compliant with the necessary format for docker extensions
+
 ## 1.0.1
 
 ### Patch Changes
