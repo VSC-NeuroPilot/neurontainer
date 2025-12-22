@@ -134,7 +134,8 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Validate
-        run: docker validate ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.version }}
+        if: steps.release.outputs.should_publish == 'true'
+        run: docker extension validate ${{ env.IMAGE_NAME }}:${{ steps.release.outputs.version }}
 
       - name: Tag release
         if: steps.release.outputs.should_publish == 'true'
