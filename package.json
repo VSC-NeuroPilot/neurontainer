@@ -17,7 +17,7 @@
     "docker:ui-source": "docker extension dev ui-source neurontainer:latest http://localhost:5173",
     "docker:ui-reset": "docker extension dev reset neurontainer:latest",
     "docker:validate": "docker extension validate ./metadata.json",
-    "publish": "echo \"Publish via CI to GHCR & Docker Hub.\""
+    "prepublishOnly": "echo \"Publish via CI to GHCR & Docker Hub.\" && exit 1"
   },
   "keywords": [
     "docker",

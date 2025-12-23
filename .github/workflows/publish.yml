@@ -52,7 +52,6 @@ jobs:
           version: pnpm changeset version
           commit: bump `neurontainer` version
           title: Bump neurontainer's version
-          publish: pnpm run publish
           createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
