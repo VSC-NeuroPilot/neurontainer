@@ -21,7 +21,7 @@ You can then choose one of two ways to install the extension.
 
 Once installed, go to the Extensions > Manage tab, click `Browse`, and search for `neurontainer`.
 
-> [!NOTE]
+> [!WARNING]
 > The initial version is not going to appear for a little bit as there is a small submissions process.
 > If you don't see this extension after restarting Docker Desktop, follow the Manual installation steps instead.
 
