@@ -10,38 +10,7 @@ updates:
     schedule:
       interval: "monthly"
     groups:
-      mono-pkg:
+      pkgs:
         update-types:
           - patch
           - minor
-          - major
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    schedule:
-      interval: "monthly"
-    groups:
-      ui-pkg:
-        update-types:
-          - patch
-          - minor
-          - major
-  - package-ecosystem: "npm"
-    directory: "/backend"
-    schedule:
-      interval: "monthly"
-    groups:
-      vm-pkg:
-        update-types:
-          - patch
-          - minor
-          - major
-  - package-ecosystem: "npm"
-    directory: "/utils"
-    schedule:
-      interval: "monthly"
-    groups:
-      utils-pkg:
-        update-types:
-          - patch
-          - minor
-          - major
