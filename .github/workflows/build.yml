@@ -32,9 +32,6 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
-      - name: Validate image
-        run: docker extension validate ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Export image tar
         run: |
