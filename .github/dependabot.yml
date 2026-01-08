@@ -10,7 +10,13 @@ updates:
     schedule:
       interval: "monthly"
     groups:
-      pkgs:
+      dev-pkgs:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
+      prod-deps:
+        dependency-type: production
         update-types:
           - patch
           - minor
