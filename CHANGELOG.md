@@ -1,5 +1,13 @@
 # neurontainer
 
+## 1.0.4
+
+### Patch Changes
+
+- 0e3bbda: Change initial context sent to Neuro after startup.
+- 7c2455b: update readme slightly
+- aba635c: Add get_cookie action for Neuro! currently returns a test cookie by default.
+
 ## 1.0.3
 
 ### Patch Changes
