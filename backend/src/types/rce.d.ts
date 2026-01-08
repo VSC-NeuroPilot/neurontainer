@@ -1,10 +1,10 @@
 import { JSONSchema7Object, type JSONSchema7 } from 'json-schema'
 import { Action } from 'neuro-game-sdk';
 
-export interface ActionData {
+export interface ActionData<T extends JSONSchema7Object | undefined = any> {
     id: string;
     name: string;
-    params?: any;
+    params: T;
 };
 
 export interface ActionResult {
@@ -24,9 +24,8 @@ export interface RCEAction extends TypedAction {
 
 /** Permission level enums */
 export enum PermissionLevel {
-    OFF = 0,
-    COPILOT = 1,
-    AUTOPILOT = 2,
+    OFF,
+    AUTOPILOT,
 }
 
 type RCEHandler = (actionData: ActionData) => Promise<ActionResult>;
