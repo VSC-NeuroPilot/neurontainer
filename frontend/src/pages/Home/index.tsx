@@ -8,9 +8,12 @@ import {
 	TextField,
 	Stack,
 	CircularProgress,
-	Alert
+	Alert,
+	Tabs,
+	Tab
 } from '@mui/material';
 import { createDockerDesktopClient } from '@docker/extension-api-client';
+import { QuickActions, type QuickActionDefinition } from '../../components/QuickActions';
 import './style.css';
 
 function stringifyAny(v: unknown) {
@@ -66,6 +69,7 @@ export function Home() {
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [lastReconnectRaw, setLastReconnectRaw] = useState<string | null>(null);
+	const [tab, setTab] = useState<'quick' | 'config'>('quick');
 
 	const refreshStatus = async () => {
 		try {
@@ -180,80 +184,169 @@ export function Home() {
 		}
 	};
 
+	const executeQuickAction = async (id: string, params: Record<string, unknown>) => {
+		try {
+			if (!ddClient) {
+				throw new Error(
+					`Docker Desktop extension API client is unavailable${ddClientInitError ? `: ${ddClientInitError}` : ''}`
+				);
+			}
+			setError(null);
+			setSuccess(null);
+
+			const raw = await withTimeout(
+				ddClient.extension.vm.service.post('/api/quick-actions/execute', { id, params }) as any,
+				15000,
+				`Quick action "${id}"`
+			);
+			const response = normalizeResponse(raw) as any;
+			if (response?.success === true) {
+				setSuccess(stringifyAny(response?.message ?? response));
+				void refreshStatus();
+				try {
+					ddClient.desktopUI.toast.success('Quick action executed');
+				} catch {
+					// ignore toast failures
+				}
+				return;
+			}
+			throw new Error(response?.error || response?.message || stringifyAny(raw));
+		} catch (err) {
+			setError(`Failed to execute quick action "${id}".\n\n${stringifyAny(err)}`);
+			try {
+				ddClient?.desktopUI.toast.error('Quick action failed');
+			} catch {
+				// ignore toast failures
+			}
+		}
+	};
+
+	const quickActions: QuickActionDefinition[] = [
+		{
+			type: 'button',
+			id: 'example_action',
+			label: 'Example quick action',
+			description: 'Replace/remove this and add your own actions.',
+			variant: 'outlined',
+			params: {}
+		}
+	];
+
 	return (
 		<Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
+			<Typography variant="h4" gutterBottom>
+				neurontainer
+			</Typography>
+			<Tabs
+				value={tab}
+				onChange={(_e, v) => setTab(v)}
+				sx={{ mb: 2 }}
+			>
+				<Tab value="quick" label="Quick Actions" />
+				<Tab value="config" label="Config" />
+			</Tabs>
 
 			{ddClientInitError && (
 				<Alert severity="warning" sx={{ mb: 2 }}>
 					Docker Desktop API client failed to initialize: {ddClientInitError}
 				</Alert>
 			)}
-			{backendStatus && (
-				<Alert severity="info" sx={{ mb: 2 }}>
-					Backend reports Neuro: {(backendStatus as any)?.neuro ?? 'unknown'} (server {(backendStatus as any)?.neuro_server ?? 'unknown'}) — ws {(backendStatus as any)?.neuro_ws ?? 'unknown'}
-					<br />
-					Last event: {JSON.stringify((backendStatus as any)?.last_neuro_event ?? null)}
-					<br />
-					Last reconnect request: {JSON.stringify((backendStatus as any)?.last_reconnect_request ?? null)}
-				</Alert>
-			)}
+
 			{error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 			{success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-			{lastReconnectRaw && (
-				<Alert severity="info" sx={{ mb: 2 }}>
-					Last reconnect raw response:
-					<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{lastReconnectRaw}</pre>
-				</Alert>
+
+			{tab === 'quick' && (
+				<Card>
+					<CardContent>
+						<Typography variant="h6" gutterBottom>
+							Quick Actions
+						</Typography>
+						<QuickActions
+							actions={quickActions}
+							disabled={Boolean(neuroLoading || dockerLoading)}
+							onExecute={executeQuickAction}
+						/>
+					</CardContent>
+				</Card>
 			)}
 
-			<Card>
-				<CardContent>
-					<Typography variant="h6" gutterBottom>
-						WebSocket Connection
-					</Typography>
+			{tab === 'config' && (
+				<Stack spacing={2}>
+					{backendStatus && (
+						<Alert severity="info">
+							Backend reports Neuro: {(backendStatus as any)?.neuro ?? 'unknown'} (server {(backendStatus as any)?.neuro_server ?? 'unknown'}) — ws {(backendStatus as any)?.neuro_ws ?? 'unknown'}
+							<br />
+							Last event: {JSON.stringify((backendStatus as any)?.last_neuro_event ?? null)}
+							<br />
+							Last reconnect request: {JSON.stringify((backendStatus as any)?.last_reconnect_request ?? null)}
+						</Alert>
+					)}
 
-					<Stack spacing={3}>
-						<TextField
-							label="WebSocket URL"
-							value={websocketUrl}
-							onChange={(e) => setWebsocketUrl((e.target as HTMLInputElement).value)}
-							fullWidth
-							placeholder="ws://localhost:8000"
-							helperText="Tip: use ws://host.docker.internal:8000 to reach a Neuro server running on your host (inside the extension container, ws://localhost points to itself)."
-							disabled={neuroLoading}
-						/>
+					{lastReconnectRaw && (
+						<Alert severity="info">
+							Last reconnect raw response:
+							<pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{lastReconnectRaw}</pre>
+						</Alert>
+					)}
 
-						<Button
-							variant="contained"
-							onClick={handleReconnect}
-							disabled={neuroLoading || !websocketUrl}
-							fullWidth
-							size="large"
-						>
-							{neuroLoading ? <CircularProgress size={24} /> : 'Reconnect NeuroClient'}
-						</Button>
-						<Button
-							variant="contained"
-							color="secondary"
-							onClick={handleDockerReconnect}
-							disabled={dockerLoading}
-							fullWidth
-							size="large"
-						>
-							{dockerLoading ? <CircularProgress size={24} /> : 'Reconnect Docker Client'}
-						</Button>
-						<Button
-							variant="outlined"
-							onClick={refreshStatus}
-							disabled={neuroLoading || dockerLoading}
-							fullWidth
-							size="large"
-						>
-							Refresh backend status
-						</Button>
-					</Stack>
-				</CardContent>
-			</Card>
+					<Card>
+						<CardContent>
+							<Typography variant="h6" gutterBottom>
+								NeuroClient
+							</Typography>
+							<Stack spacing={2}>
+								<TextField
+									label="WebSocket URL"
+									value={websocketUrl}
+									onChange={(e) => setWebsocketUrl((e.target as HTMLInputElement).value)}
+									fullWidth
+									placeholder="ws://localhost:8000"
+									helperText="Tip: use ws://host.docker.internal:8000 to reach a Neuro server running on your host (inside the extension container, ws://localhost points to itself)."
+									disabled={neuroLoading}
+								/>
+								<Button
+									variant="contained"
+									onClick={handleReconnect}
+									disabled={neuroLoading || !websocketUrl}
+									fullWidth
+									size="large"
+								>
+									{neuroLoading ? <CircularProgress size={24} /> : 'Reconnect NeuroClient'}
+								</Button>
+							</Stack>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardContent>
+							<Typography variant="h6" gutterBottom>
+								Clients
+							</Typography>
+							<Stack spacing={2}>
+								<Button
+									variant="contained"
+									color="secondary"
+									onClick={handleDockerReconnect}
+									disabled={dockerLoading}
+									fullWidth
+									size="large"
+								>
+									{dockerLoading ? <CircularProgress size={24} /> : 'Reconnect Docker Client'}
+								</Button>
+								<Button
+									variant="outlined"
+									onClick={refreshStatus}
+									disabled={neuroLoading || dockerLoading}
+									fullWidth
+									size="large"
+								>
+									Refresh backend status
+								</Button>
+							</Stack>
+						</CardContent>
+					</Card>
+				</Stack>
+			)}
 		</Box>
 	);
 }

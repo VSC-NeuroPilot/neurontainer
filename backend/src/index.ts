@@ -43,6 +43,16 @@ app.use('*', async (c, next) => {
 
 // NOTE: config read/write/normalize/validation lives in ./config/permissions now
 
+function stringifyAny(value: unknown): string {
+  if (value instanceof Error) return value.stack || value.message
+  try {
+    if (typeof value === 'string') return value
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
 function registerActionSubset(actionSubset: typeof actions): void {
   if (!actionSubset.length) return
   const actionsToRegister = actionSubset.map(a => ({
@@ -217,6 +227,23 @@ app.post('/api/reconnect/docker', async (c) => {
     return c.json({ success: false, error: message }, 500)
   }
 })
+
+app.post('/api/quick-actions/execute', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({})) as any;
+    const id = typeof body?.id === 'string' ? body.id : undefined;
+    const params = body?.params && typeof body.params === 'object' ? body.params : undefined;
+    if (!id) {
+      return c.json({ success: false, error: 'Missing quick action id' }, 400);
+    }
+
+    logger.info('Quick action execute (stub)', { id, params });
+    return c.json({ success: true, message: `Stub executed: ${id}` });
+  } catch (err) {
+    logger.error('Quick action execute failed', { err });
+    return c.json({ success: false, error: stringifyAny(err) }, 500);
+  }
+});
 
 app.get('/api/config', (c) => {
   try {
