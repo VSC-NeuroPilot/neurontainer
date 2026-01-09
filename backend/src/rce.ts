@@ -1,9 +1,10 @@
-import type { ActionData, ActionResult } from "./types/rce";
+import type { ActionData, ActionResult, PermissionLevel } from "./types/rce";
 import { CONT, ERROR_MSG_REFERENCE } from "./consts";
 import { actions } from "./functions";
 import { validate } from "jsonschema";
 import { readConfig } from "./config/permissions";
 import { CONFIG_PATH } from "./config/paths";
+import { PermissionLevel as PermLevel } from "./types/rce";
 
 export async function RCEActionHandler(actionData: ActionData): Promise<void> {
     console.log(`Received action from Neuro: ${actionData.name}`, actionData.params);
@@ -22,8 +23,9 @@ export async function RCEActionHandler(actionData: ActionData): Promise<void> {
     // Permission backup: even if an action is still registered for any reason,
     // refuse execution if the persisted permissions disable it.
     try {
-        const permissions = readConfig(actions, CONFIG_PATH, CONT.logger)
-        if (permissions[actionData.name] === false) {
+        const permissions = readConfig(actions, CONFIG_PATH)
+        const permission = permissions[actionData.name] ?? action.defaultPermission ?? PermLevel.OFF
+        if (permission === PermLevel.OFF) {
             const msg = `Action "${actionData.name}" is disabled by permissions.`
             CONT.logger.warn(msg)
             CONT.neuro.sendActionResult(actionData.id, false, msg)

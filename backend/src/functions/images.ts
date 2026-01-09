@@ -1,10 +1,11 @@
 import { CONT } from "../consts";
-import type { ActionData, ActionResult, RCEAction } from "../types/rce";
+import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce";
 
 export const imageActions: RCEAction[] = [
     {
         name: 'list_images',
         description: 'List all containers created in Docker.',
+        defaultPermission: PermissionLevel.OFF,
         handler: handleListImages,
     }
 ];

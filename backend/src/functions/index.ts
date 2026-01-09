@@ -3,10 +3,12 @@ import type { RCEAction } from "../types/rce";
 import { stripToActions } from "../utils/misc";
 import { containerActions } from "./containers";
 import { imageActions } from "./images";
+import { miscActions } from "./misc";
 
 export const actions: RCEAction[] = [
     ...containerActions,
     ...imageActions,
+    ...miscActions,
 ]
 
 export function reregisterAllActions() {

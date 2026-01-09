@@ -5,6 +5,7 @@ import type { ActionData } from '../types/rce'
 import { actions } from '../functions'
 import { stripToActions } from '../utils/misc'
 import { RCEActionHandler } from '../rce'
+import assert from 'node:assert'
 
 type NeuroEvent =
   | { type: 'connect_attempt'; at: number; url: string }
@@ -29,15 +30,12 @@ class NoderontainerConstants {
   private readonly GAME_NAME = 'Docker Desktop'
   private actionHandler: ((actionData: ActionData) => Promise<{ success: boolean; message: string }>) | null = null
 
-  private async loadDockerClient(): Promise<boolean> {
-    const client = await DockerClient.fromDockerConfig()
+  private async loadDockerClient() {
+    return await DockerClient.fromDockerConfig()
       .catch((e) => {
         console.error(e)
-        return undefined
+        process.exit(1)
       })
-    if (!client) return false
-    this.docker = client
-    return true
   }
 
   constructor() {
@@ -46,7 +44,7 @@ class NoderontainerConstants {
 
     // initNeuro() is responsible for creating the NeuroClient.
     this.neuro = this.initNeuro()
-    this.loadDockerClient()
+    this.loadDockerClient().then((c) => this.docker = c)
   }
 
   private describeWs(ws: any): string {
@@ -233,7 +231,8 @@ class NoderontainerConstants {
   }
 
   public async reloadDockerClient(): Promise<boolean> {
-    return await this.loadDockerClient()
+    this.docker = await this.loadDockerClient()
+    return true
   }
 }
 

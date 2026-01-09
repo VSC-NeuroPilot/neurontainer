@@ -1,15 +1,17 @@
 import fs from 'fs'
 import path from 'path'
+import { CONT } from '../consts'
+import { PermissionLevel } from '../types/rce'
 
 export interface ActionConfig {
-    [actionName: string]: boolean
+    [actionName: string]: PermissionLevel | undefined
 }
 
 interface DiskConfig {
     permissions: ActionConfig
 }
 
-export type ActionLike = { name: string }
+export type ActionLike = { name: string; defaultPermission?: PermissionLevel }
 
 export type LoggerLike = {
     info: (message: string, ...meta: any[]) => void
@@ -20,7 +22,7 @@ export type LoggerLike = {
 export function getDefaultConfig(actions: readonly ActionLike[]): ActionConfig {
     const config: ActionConfig = {}
     for (const action of actions) {
-        config[action.name] = true
+        config[action.name] = action.defaultPermission ?? PermissionLevel.OFF
     }
     return config
 }
@@ -31,11 +33,19 @@ export function normalizeConfig(
     previous?: ActionConfig,
 ): ActionConfig {
     const base = getDefaultConfig(actions)
-    const mergedRaw: Record<string, boolean | undefined> = { ...base, ...(previous ?? {}), ...(input ?? {}) }
+    const mergedRaw: Record<string, PermissionLevel | undefined> = { ...base, ...(previous ?? {}), ...(input ?? {}) }
 
     const merged: ActionConfig = {}
-    for (const name of Object.keys(mergedRaw)) {
-        merged[name] = Boolean(mergedRaw[name])
+    for (const action of actions) {
+        const name = action.name
+        const value = mergedRaw[name]
+
+        // Use the value from config if defined, otherwise use action's defaultPermission
+        if (value !== undefined) {
+            merged[name] = value
+        } else {
+            merged[name] = action.defaultPermission ?? PermissionLevel.OFF
+        }
     }
     return merged
 }
@@ -43,26 +53,25 @@ export function normalizeConfig(
 export function readConfig(
     actions: readonly ActionLike[],
     configPath: string,
-    logger: LoggerLike,
 ): ActionConfig {
     try {
         if (!fs.existsSync(configPath)) {
             const defaultConfig = getDefaultConfig(actions)
-            writeConfig(configPath, defaultConfig, logger)
+            writeConfig(configPath, defaultConfig)
             return defaultConfig
         }
 
         const data = fs.readFileSync(configPath, 'utf-8')
         if (!data.trim()) {
             const defaultConfig = getDefaultConfig(actions)
-            writeConfig(configPath, defaultConfig, logger)
+            writeConfig(configPath, defaultConfig)
             return defaultConfig
         }
 
         const parsed = JSON.parse(data) as unknown
         if (!parsed || typeof parsed !== 'object') {
             const defaultConfig = getDefaultConfig(actions)
-            writeConfig(configPath, defaultConfig, logger)
+            writeConfig(configPath, defaultConfig)
             return defaultConfig
         }
 
@@ -76,15 +85,15 @@ export function readConfig(
         // Migrate it to the new format on next write.
         const legacy = parsed as ActionConfig
         const normalized = normalizeConfig(actions, legacy)
-        writeConfig(configPath, normalized, logger)
+        writeConfig(configPath, normalized)
         return normalized
     } catch (error) {
-        logger.error('Error reading config:', error)
+        CONT.logger.error('Error reading config:', error)
         return getDefaultConfig(actions)
     }
 }
 
-export function writeConfig(configPath: string, config: ActionConfig, logger: LoggerLike): void {
+export function writeConfig(configPath: string, config: ActionConfig): void {
     try {
         const dir = path.dirname(configPath)
         if (!fs.existsSync(dir)) {
@@ -93,9 +102,9 @@ export function writeConfig(configPath: string, config: ActionConfig, logger: Lo
 
         const disk: DiskConfig = { permissions: config }
         fs.writeFileSync(configPath, JSON.stringify(disk, null, 2))
-        logger.info('Config saved')
+        CONT.logger.info('Config saved')
     } catch (error) {
-        logger.error('Error writing config:', error)
+        CONT.logger.error('Error writing config:', error)
         throw error
     }
 }

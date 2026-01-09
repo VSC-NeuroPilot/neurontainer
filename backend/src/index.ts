@@ -6,6 +6,7 @@ import { CONT } from './consts'
 import { logger } from './utils'
 import { RCEActionHandler } from './rce'
 import { actions } from './functions'
+import { PermissionLevel } from './types/rce'
 import {
   normalizeConfig,
   readConfig,
@@ -53,8 +54,14 @@ function registerActionSubset(actionSubset: typeof actions): void {
 }
 
 function applyConfigFull(config: ActionConfig): void {
-  const enabledActions = actions.filter(action => config[action.name] === true)
-  const disabledActions = actions.filter(action => config[action.name] === false)
+  const enabledActions = actions.filter(action => {
+    const permission = config[action.name] ?? action.defaultPermission ?? PermissionLevel.OFF
+    return permission !== PermissionLevel.OFF
+  })
+  const disabledActions = actions.filter(action => {
+    const permission = config[action.name] ?? action.defaultPermission ?? PermissionLevel.OFF
+    return permission === PermissionLevel.OFF
+  })
   logger.info(`Applying config (full): ${enabledActions.length} enabled, ${disabledActions.length} disabled`)
 
   // Safe baseline: remove everything we know about, then add back enabled.
@@ -71,11 +78,11 @@ function applyConfigDelta(previous: ActionConfig, next: ActionConfig): void {
   const toRegister = [] as typeof actions
 
   for (const action of actions) {
-    const before = previous[action.name] ?? true
-    const after = next[action.name] ?? true
+    const before = previous[action.name] ?? action.defaultPermission ?? PermissionLevel.OFF
+    const after = next[action.name] ?? action.defaultPermission ?? PermissionLevel.OFF
     if (before === after) continue
 
-    if (after) {
+    if (after !== PermissionLevel.OFF) {
       toRegister.push(action)
     } else {
       toUnregister.push(action.name)
@@ -213,12 +220,12 @@ app.post('/api/reconnect/docker', async (c) => {
 
 app.get('/api/config', (c) => {
   try {
-    const diskConfig = readConfig(actions, CONFIG_PATH, logger)
+    const diskConfig = readConfig(actions, CONFIG_PATH)
     const normalized = normalizeConfig(actions, diskConfig)
     // If file was missing/partial/empty, normalize and persist so UI always sees all keys.
     if (JSON.stringify(diskConfig) !== JSON.stringify(normalized)) {
       try {
-        writeConfig(CONFIG_PATH, normalized, logger)
+        writeConfig(CONFIG_PATH, normalized)
       } catch {
         // ignore persistence failures; still return normalized
       }
@@ -244,7 +251,7 @@ app.put('/api/config', async (c) => {
     const previous = currentConfig
     const next = normalizeConfig(actions, incoming, previous)
 
-    writeConfig(CONFIG_PATH, next, logger)
+    writeConfig(CONFIG_PATH, next)
     applyConfigDelta(previous, next)
     currentConfig = next
 
@@ -294,7 +301,7 @@ process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'))
     CONT.neuro.onAction(RCEActionHandler)
 
     // Load and apply configuration
-    const config = normalizeConfig(actions, readConfig(actions, CONFIG_PATH, logger))
+    const config = normalizeConfig(actions, readConfig(actions, CONFIG_PATH))
     currentConfig = config
     applyConfigFull(config);
 

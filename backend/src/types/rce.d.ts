@@ -19,12 +19,13 @@ export interface RCEAction extends TypedAction {
     displayName?: string;
     validators?: ((actionData: ActionData) => ActionValidationResult | Promise<ActionValidationResult>)[];
     handler: RCEHandler;
-    defaultPermission?: PermissionLevel;
+    defaultPermission: PermissionLevel;
 };
 
 /** Permission level enums */
 export enum PermissionLevel {
     OFF,
+    FORCE,
     AUTOPILOT,
 }
 
