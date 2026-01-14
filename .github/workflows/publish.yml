@@ -24,6 +24,7 @@ jobs:
     if: ${{ !startsWith(github.event.head_commit.message, '[no-publish] ') }}
     env:
       IMAGE_NAME: "neurontainer"
+      GITHUB_PACKAGES_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,7 +44,9 @@ jobs:
           cache-dependency-path: "./pnpm-lock.yaml"
 
       - name: Install JS deps (for utils)
-        run: pnpm install --frozen-lockfile
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}" >> .npmrc
+          pnpm install --frozen-lockfile
 
       - name: Create/Update release PR (Changesets)
         id: changesets
