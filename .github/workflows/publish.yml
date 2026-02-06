@@ -43,6 +43,8 @@ jobs:
           cache-dependency-path: "./pnpm-lock.yaml"
 
       - name: Install JS deps (for utils)
+        env:
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}" >> .npmrc
           pnpm install --frozen-lockfile
