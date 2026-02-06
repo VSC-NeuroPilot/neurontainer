@@ -14,6 +14,7 @@ import {
   writeConfig,
   type ActionConfig,
 } from './config/permissions'
+import { readDiskConfig, writeDiskConfig, type NeuroConfig } from './config/config'
 import { CHANGELOG_PATH, CONFIG_PATH } from './config/paths'
 
 const SOCKET_PATH = '/run/guest-services/backend.sock';
@@ -114,6 +115,7 @@ function applyConfigDelta(previous: ActionConfig, next: ActionConfig): void {
 }
 
 let currentConfig: ActionConfig = normalizeConfig(actions, undefined)
+let currentNeuroConfig: NeuroConfig = { websocketUrl: CONT.currentNeuroUrl }
 
 const GAME_NAME = 'neurontainer'
 
@@ -165,7 +167,7 @@ app.get('/api/changelog', async (c) => {
 app.post('/api/reconnect/neuro', async (c) => {
   try {
     const body = await c.req.json()
-    const requested = (body.websocketUrl || CONT.currentNeuroUrl) as string
+    const requested = (body.websocketUrl || currentNeuroConfig.websocketUrl || CONT.currentNeuroUrl) as string
     const { normalized: websocketUrl, note } = CONT.normalizeNeuroUrl(requested)
     CONT.lastReconnectRequest = { requested, normalized: websocketUrl, note, at: Date.now() }
     CONT.lastNeuroEvent = { type: 'reconnect_request', at: Date.now(), requested, normalized: websocketUrl, note }
@@ -247,18 +249,30 @@ app.post('/api/quick-actions/execute', async (c) => {
 
 app.get('/api/config', (c) => {
   try {
-    const diskConfig = readConfig(actions, CONFIG_PATH)
-    const normalized = normalizeConfig(actions, diskConfig)
-    // If file was missing/partial/empty, normalize and persist so UI always sees all keys.
-    if (JSON.stringify(diskConfig) !== JSON.stringify(normalized)) {
-      try {
-        writeConfig(CONFIG_PATH, normalized)
-      } catch {
-        // ignore persistence failures; still return normalized
-      }
+    const disk = readDiskConfig(CONFIG_PATH)
+    const diskPermissions = readConfig(actions, CONFIG_PATH)
+    const normalizedPermissions = normalizeConfig(actions, diskPermissions)
+
+    const neuro = (disk.neuro && typeof disk.neuro === 'object') ? disk.neuro : {}
+    const neuroWebsocketUrl = typeof neuro.websocketUrl === 'string' && neuro.websocketUrl.trim()
+      ? neuro.websocketUrl
+      : CONT.currentNeuroUrl
+
+    const normalizedDisk = {
+      ...disk,
+      permissions: normalizedPermissions,
+      neuro: { websocketUrl: neuroWebsocketUrl }
     }
-    currentConfig = normalized
-    return c.json({ success: true, config: { permissions: normalized } });
+
+    try {
+      writeDiskConfig(CONFIG_PATH, normalizedDisk)
+    } catch {
+      // ignore persistence failures; still return normalized
+    }
+
+    currentConfig = normalizedPermissions
+    currentNeuroConfig = { websocketUrl: neuroWebsocketUrl }
+    return c.json({ success: true, config: { permissions: normalizedPermissions, neuro: currentNeuroConfig } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to read config';
     logger.error('Error reading config:', error);
@@ -269,23 +283,40 @@ app.get('/api/config', (c) => {
 app.put('/api/config', async (c) => {
   try {
     const body = await c.req.json();
-    const incomingResult = validateIncomingConfig(actions, body?.config?.permissions)
-    if (!incomingResult.ok) {
-      return c.json({ success: false, error: incomingResult.error }, 400)
+    const incomingPermissions = body?.config?.permissions
+    const incomingNeuroUrl = body?.config?.neuro?.websocketUrl
+
+    let nextPermissions = currentConfig
+    if (incomingPermissions !== undefined) {
+      const incomingResult = validateIncomingConfig(actions, incomingPermissions)
+      if (!incomingResult.ok) {
+        return c.json({ success: false, error: incomingResult.error }, 400)
+      }
+      const incoming = incomingResult.value
+
+      const previous = currentConfig
+      nextPermissions = normalizeConfig(actions, incoming, previous)
+      writeConfig(CONFIG_PATH, nextPermissions)
+      applyConfigDelta(previous, nextPermissions)
+      currentConfig = nextPermissions
     }
-    const incoming = incomingResult.value
 
-    const previous = currentConfig
-    const next = normalizeConfig(actions, incoming, previous)
-
-    writeConfig(CONFIG_PATH, next)
-    applyConfigDelta(previous, next)
-    currentConfig = next
-
+    if (incomingNeuroUrl !== undefined) {
+      if (typeof incomingNeuroUrl !== 'string') {
+        return c.json({ success: false, error: 'config.neuro.websocketUrl must be a string' }, 400)
+      }
+      const { normalized } = CONT.normalizeNeuroUrl(incomingNeuroUrl)
+      const disk = readDiskConfig(CONFIG_PATH)
+      disk.neuro = { ...(disk.neuro ?? {}), websocketUrl: normalized }
+      writeDiskConfig(CONFIG_PATH, disk)
+      currentNeuroConfig = { websocketUrl: normalized }
+      // Reflect in runtime defaults (does not reconnect automatically)
+      CONT.currentNeuroUrl = normalized
+    }
     return c.json({
       success: true,
       message: 'Config updated and applied',
-      config: { permissions: next }
+      config: { permissions: currentConfig, neuro: currentNeuroConfig }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update config';
@@ -328,9 +359,26 @@ process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'))
     CONT.neuro.onAction(RCEActionHandler)
 
     // Load and apply configuration
+    const disk = readDiskConfig(CONFIG_PATH)
     const config = normalizeConfig(actions, readConfig(actions, CONFIG_PATH))
     currentConfig = config
     applyConfigFull(config);
+
+    const configuredNeuroUrl = typeof disk?.neuro?.websocketUrl === 'string' && disk.neuro.websocketUrl.trim()
+      ? disk.neuro.websocketUrl
+      : undefined
+    if (configuredNeuroUrl) {
+      const { normalized } = CONT.normalizeNeuroUrl(configuredNeuroUrl)
+      currentNeuroConfig = { websocketUrl: normalized }
+      CONT.currentNeuroUrl = normalized
+
+      const existingUrl = (CONT.neuro as any)?.ws?.url
+      if (!existingUrl || String(existingUrl) !== normalized) {
+        void CONT.reconnectNeuro(normalized).catch((e) => {
+          logger.error('Failed to reconnect NeuroClient to configured URL on startup', e)
+        })
+      }
+    }
 
     // Remove existing socket if present
     if (fs.existsSync(SOCKET_PATH)) {

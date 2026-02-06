@@ -6,6 +6,7 @@
 		"allowJs": true,
 		"checkJs": true,
 		"composite": true,
+		"types": ["vite/client", "@docker/extension-api-client-types"],
 
 		/* Preact Config */
 		"jsx": "react-jsx",
@@ -16,6 +17,6 @@
 			"react-dom": ["./node_modules/preact/compat/"]
 		}
 	},
-	"include": ["node_modules/vite/client.d.ts", "**/*"],
+	"include": ["./src/**/*"],
 	"exclude": ["dist/**/*"]
 }

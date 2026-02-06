@@ -69,22 +69,76 @@ export function Home() {
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [lastReconnectRaw, setLastReconnectRaw] = useState<string | null>(null);
-	const [tab, setTab] = useState<'quick' | 'config'>('quick');
+	const [tab, setTab] = useState<'quick' | 'configs'>('quick');
+	const [configLoaded, setConfigLoaded] = useState(false);
 
 	const refreshStatus = async () => {
 		try {
 			if (!ddClient) return;
 			const status = await ddClient.extension.vm.service.get('/api/status');
 			setBackendStatus(status);
-			// Prefer backend's current URL if present.
-			if ((status as any)?.neuro_server) setWebsocketUrl((status as any).neuro_server);
 		} catch {
 			// ignore
 		}
 	};
 
+	const refreshConfig = async () => {
+		try {
+			if (!ddClient) return;
+			const raw = await ddClient.extension.vm.service.get('/api/config');
+			const response = normalizeResponse(raw) as any;
+			const url = response?.config?.neuro?.websocketUrl;
+			if (typeof url === 'string' && url.trim()) {
+				setWebsocketUrl(url);
+			}
+			setConfigLoaded(true);
+		} catch {
+			// ignore
+		}
+	};
+
+	const saveNeuroWebsocketUrl = async (opts?: { silent?: boolean }) => {
+		try {
+			if (!ddClient) {
+				throw new Error(
+					`Docker Desktop extension API client is unavailable${ddClientInitError ? `: ${ddClientInitError}` : ''}`
+				);
+			}
+			setError(null);
+
+			const raw = await withTimeout(
+				ddClient.extension.vm.service.put('/api/config', {
+					config: { neuro: { websocketUrl } }
+				}) as any,
+				15000,
+				'Save Neuro config'
+			);
+			const response = normalizeResponse(raw) as any;
+			if (response?.success !== true) {
+				throw new Error(response?.error || response?.message || stringifyAny(raw));
+			}
+			setConfigLoaded(true);
+			if (!opts?.silent) {
+				setSuccess('Neuro config saved');
+				try {
+					ddClient.desktopUI.toast.success('Neuro config saved');
+				} catch {
+					// ignore toast failures
+				}
+			}
+		} catch (err) {
+			setError(`Failed to save Neuro config.\n\n${stringifyAny(err)}`);
+			try {
+				ddClient?.desktopUI.toast.error('Failed to save Neuro config');
+			} catch {
+				// ignore toast failures
+			}
+		}
+	};
+
 	useEffect(() => {
 		refreshStatus();
+		refreshConfig();
 	}, []);
 
 	const handleReconnect = async () => {
@@ -94,6 +148,8 @@ export function Home() {
 					`Docker Desktop extension API client is unavailable${ddClientInitError ? `: ${ddClientInitError}` : ''}`
 				);
 			}
+			// Persist the URL in config so backend defaults match UI.
+			await saveNeuroWebsocketUrl({ silent: true });
 			setNeuroLoading(true);
 			setError(null);
 			setSuccess(null);
@@ -112,6 +168,7 @@ export function Home() {
 					`NeuroClient connected: ${response.websocketUrl ?? websocketUrl}\n\nResponse:\n${stringifyAny(response)}`
 				);
 				await refreshStatus();
+				await refreshConfig();
 				try {
 					ddClient.desktopUI.toast.success('NeuroClient reconnected');
 				} catch {
@@ -127,6 +184,7 @@ export function Home() {
 			// Re-enable the button immediately; refresh status in the background.
 			setNeuroLoading(false);
 			void refreshStatus();
+			void refreshConfig();
 			try {
 				ddClient?.desktopUI.toast.error('Failed to reconnect NeuroClient');
 			} catch {
@@ -160,6 +218,7 @@ export function Home() {
 					`Docker client reconnected successfully\n\nResponse:\n${stringifyAny(response)}`
 				);
 				await refreshStatus();
+				await refreshConfig();
 				try {
 					ddClient.desktopUI.toast.success('Docker client reconnected');
 				} catch {
@@ -174,6 +233,7 @@ export function Home() {
 			// Re-enable the button immediately; refresh status in the background.
 			setDockerLoading(false);
 			void refreshStatus();
+			void refreshConfig();
 			try {
 				ddClient?.desktopUI.toast.error('Failed to reconnect Docker client');
 			} catch {
@@ -203,6 +263,7 @@ export function Home() {
 			if (response?.success === true) {
 				setSuccess(stringifyAny(response?.message ?? response));
 				void refreshStatus();
+				void refreshConfig();
 				try {
 					ddClient.desktopUI.toast.success('Quick action executed');
 				} catch {
@@ -243,7 +304,7 @@ export function Home() {
 				sx={{ mb: 2 }}
 			>
 				<Tab value="quick" label="Quick Actions" />
-				<Tab value="config" label="Config" />
+				<Tab value="configs" label="Configs" />
 			</Tabs>
 
 			{ddClientInitError && (
@@ -270,7 +331,7 @@ export function Home() {
 				</Card>
 			)}
 
-			{tab === 'config' && (
+			{tab === 'configs' && (
 				<Stack spacing={2}>
 					{backendStatus && (
 						<Alert severity="info">
@@ -304,6 +365,20 @@ export function Home() {
 									helperText="Tip: use ws://host.docker.internal:8000 to reach a Neuro server running on your host (inside the extension container, ws://localhost points to itself)."
 									disabled={neuroLoading}
 								/>
+								<Button
+									variant="outlined"
+									onClick={() => saveNeuroWebsocketUrl()}
+									disabled={neuroLoading || !websocketUrl}
+									fullWidth
+									size="large"
+								>
+									Save Neuro config
+								</Button>
+								{!configLoaded && (
+									<Alert severity="warning">
+										Config not loaded yet; using UI default.
+									</Alert>
+								)}
 								<Button
 									variant="contained"
 									onClick={handleReconnect}

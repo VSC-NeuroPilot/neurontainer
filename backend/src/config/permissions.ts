@@ -2,13 +2,10 @@ import fs from 'fs'
 import path from 'path'
 import { CONT } from '../consts'
 import { PermissionLevel } from '../types/rce'
+import { readDiskConfig, writeDiskConfig } from './config'
 
 export interface ActionConfig {
     [actionName: string]: PermissionLevel | undefined
-}
-
-interface DiskConfig {
-    permissions: ActionConfig
 }
 
 export type ActionLike = { name: string; defaultPermission?: PermissionLevel }
@@ -75,15 +72,18 @@ export function readConfig(
             return defaultConfig
         }
 
-        // New format: { permissions: { ... } }
+        // New format: { permissions: { ... }, neuro?: { ... } }
         const maybePermissions = (parsed as { permissions?: unknown }).permissions
         if (maybePermissions && typeof maybePermissions === 'object') {
             return maybePermissions as ActionConfig
         }
 
-        // Legacy format: { actionName: true/false }
-        // Migrate it to the new format on next write.
-        const legacy = parsed as ActionConfig
+        // Legacy format: { actionName: true/false } (and possibly other keys like neuro).
+        // Treat only unknown keys (excluding known containers) as action permission map.
+        const legacyRaw = { ...(parsed as Record<string, unknown>) } as Record<string, unknown>
+        delete (legacyRaw as any).permissions
+        delete (legacyRaw as any).neuro
+        const legacy = legacyRaw as unknown as Partial<ActionConfig>
         const normalized = normalizeConfig(actions, legacy)
         writeConfig(configPath, normalized)
         return normalized
@@ -100,8 +100,9 @@ export function writeConfig(configPath: string, config: ActionConfig): void {
             fs.mkdirSync(dir, { recursive: true })
         }
 
-        const disk: DiskConfig = { permissions: config }
-        fs.writeFileSync(configPath, JSON.stringify(disk, null, 2))
+        const disk = readDiskConfig(configPath)
+        disk.permissions = config as any
+        writeDiskConfig(configPath, disk)
         CONT.logger.info('Config saved')
     } catch (error) {
         CONT.logger.error('Error writing config:', error)
