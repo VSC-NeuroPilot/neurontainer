@@ -33,20 +33,17 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.24.0
+          version: 10.24.x
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.14.x
           cache: pnpm
           cache-dependency-path: "./pnpm-lock.yaml"
 
       - name: Install JS deps (for utils)
-        env:
-          GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}" >> .npmrc
           pnpm install --frozen-lockfile
 
       - name: Create/Update release PR (Changesets)
