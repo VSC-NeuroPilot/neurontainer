@@ -43,7 +43,9 @@ jobs:
           cache-dependency-path: "./pnpm-lock.yaml"
 
       - name: Install JS deps (for utils)
-        run: pnpm install --frozen-lockfile
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}" >> .npmrc
+          pnpm install --frozen-lockfile
 
       - name: Create/Update release PR (Changesets)
         id: changesets
