@@ -1,5 +1,5 @@
 import { CONT } from "../consts";
-import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce";
+import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce.d";
 
 export const imageActions: RCEAction[] = [
     {

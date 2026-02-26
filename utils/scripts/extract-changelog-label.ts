@@ -13,7 +13,7 @@ function fail(msg: string): never {
     process.exit(1)
 }
 
-export type ChangelogEntry = {
+export interface ChangelogEntry {
     /** Normalized version (no leading "v"). */
     version: string
     /** The raw heading line that matched (e.g. `## [1.2.3] - 2025-01-01`). */
@@ -22,7 +22,7 @@ export type ChangelogEntry = {
     body: string
 }
 
-export type ExtractChangelogEntryOptions = {
+export interface ExtractChangelogEntryOptions {
     /**
      * If true (default), removes HTML comments (`<!-- ... -->`) before parsing, so commented
      * sections are not accidentally returned.
@@ -51,7 +51,7 @@ function normalizeMarkdown(md: string, stripHtmlComments: boolean): string {
     return stripHtmlComments ? normalized.replace(/<!--[\s\S]*?-->/g, '') : normalized
 }
 
-type Heading = { lineIndex: number; version: string; heading: string }
+interface Heading { lineIndex: number; version: string; heading: string }
 
 function findVersionHeadings(markdown: string, ignoreBuildMetadata: boolean): Heading[] {
     const lines = markdown.split('\n')
@@ -220,8 +220,8 @@ const isDirectInvocation =
     typeof process.argv[1] === 'string' && pathToFileURL(process.argv[1]).href === import.meta.url
 
 if (isDirectInvocation) {
-    main().catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err)
+    main().catch((erm: unknown) => {
+        const msg = erm instanceof Error ? erm.message : String(erm)
         fail(msg)
     })
 }

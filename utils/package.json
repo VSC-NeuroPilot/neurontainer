@@ -16,7 +16,7 @@
         }
     },
     "scripts": {
-        "build": "tsc -p tsconfig.json --outDir dist"
+        "build": "tsc --project tsconfig.json"
     },
     "dependencies": {
         "rehype-sanitize": "^6.0.0",

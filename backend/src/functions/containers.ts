@@ -1,6 +1,6 @@
 import type { JSONSchema7 } from "json-schema";
 import { CONT } from "../consts";
-import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce";
+import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce.d";
 
 const containerTargetSchema: JSONSchema7 = {
     type: "object",
