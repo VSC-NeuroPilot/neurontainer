@@ -28,6 +28,8 @@
   "license": "MIT",
   "devDependencies": {
     "@changesets/cli": "~2.29.8",
-    "@vsc-neuropilot/tooling-configurations": "^0.0.0"
+    "@vsc-neuropilot/tooling-configurations": "^1.0.0",
+    "oxfmt": "^0.28.0",
+    "oxlint": "^1.43.0"
   }
 }
