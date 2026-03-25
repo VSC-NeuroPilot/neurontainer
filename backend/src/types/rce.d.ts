@@ -24,9 +24,9 @@ export interface RCEAction extends TypedAction {
 
 /** Permission level enums */
 export enum PermissionLevel {
-    OFF,
-    FORCE,
     AUTOPILOT,
+    FORCE,
+    OFF,
 }
 
 type RCEHandler = (actionData: ActionData) => Promise<ActionResult>;

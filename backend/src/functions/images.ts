@@ -4,7 +4,7 @@ import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } f
 export const imageActions: RCEAction[] = [
     {
         name: 'list_images',
-        description: 'List all containers created in Docker.',
+        description: 'List all images created in Docker.',
         defaultPermission: PermissionLevel.OFF,
         handler: handleListImages,
     }
