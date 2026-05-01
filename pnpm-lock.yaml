@@ -27,14 +27,14 @@ importers:
         specifier: ~0.0.17
         version: 0.0.17
       hono:
-        specifier: ~4.12.14
-        version: 4.12.14
+        specifier: ~4.12.16
+        version: 4.12.16
       jsonschema:
         specifier: ^1.5.0
         version: 1.5.0
       neuro-game-sdk:
-        specifier: ~1.0.6
-        version: 1.0.6(ws@8.18.3)
+        specifier: ~1.1.0
+        version: 1.1.0
       winston:
         specifier: ~3.19.0
         version: 3.19.0
@@ -76,8 +76,8 @@ importers:
         specifier: ~7.3.7
         version: 7.3.7(@emotion/react@11.14.0(@types/react@19.2.7)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.7)(react@18.3.1))(@types/react@19.2.7)(react@18.3.1))(@types/react@19.2.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       preact:
-        specifier: ~10.28.2
-        version: 10.28.2
+        specifier: ~10.29.1
+        version: 10.29.1
       rehype-sanitize:
         specifier: ^6.0.0
         version: 6.0.0
@@ -99,7 +99,7 @@ importers:
         version: 0.4.2
       '@preact/preset-vite':
         specifier: ~2.10.2
-        version: 2.10.2(@babel/core@7.28.5)(preact@10.28.2)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))
+        version: 2.10.2(@babel/core@7.28.5)(preact@10.29.1)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -570,12 +570,16 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@humanfs/core@0.19.1':
-    resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
+  '@humanfs/core@0.19.2':
+    resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
     engines: {node: '>=18.18.0'}
 
-  '@humanfs/node@0.16.7':
-    resolution: {integrity: sha512-/zUx+yOsIrG4Y43Eh2peDeKCxlRt/gET6aHfaKpuq267qXdYDFViVHfMaLyygZOnl0kGWxFIgsBy8QFuTLUXEQ==}
+  '@humanfs/node@0.16.8':
+    resolution: {integrity: sha512-gE1eQNZ3R++kTzFUpdGlpmy8kDZD/MLyHqDwqjkVQI0JMdI1D51sy1H958PNXYkM2rAac7e5/CnIKZrHtPh3BQ==}
+    engines: {node: '>=18.18.0'}
+
+  '@humanfs/types@0.15.0':
+    resolution: {integrity: sha512-ZZ1w0aoQkwuUuC7Yf+7sdeaNfqQiiLcSRbfI08oAxqLtpXQr9AIVX7Ay7HLDuiLYAaFPu8oBYNq/QIi9URHJ3Q==}
     engines: {node: '>=18.18.0'}
 
   '@humanwhocodes/module-importer@1.0.1':
@@ -1050,8 +1054,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  ajv@6.14.0:
-    resolution: {integrity: sha512-IWrosm/yrn43eiKqkfkHis7QioDleaXQHdDVPKg0FSwwd/DuvyX79TZnFOnYpB7dcsFAMmtFztZuXPDvSePkFw==}
+  ajv@6.15.0:
+    resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
   ansi-colors@4.1.3:
     resolution: {integrity: sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw==}
@@ -1542,8 +1546,8 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
-  hono@4.12.14:
-    resolution: {integrity: sha512-am5zfg3yu6sqn5yjKBNqhnTX7Cv+m00ox+7jbaKkrLMRJ4rAdldd1xPd/JzbBWspqaQv6RSTrgFN95EsfhC+7w==}
+  hono@4.12.16:
+    resolution: {integrity: sha512-jN0ZewiNAWSe5khM3EyCmBb250+b40wWbwNILNfEvq84VREWwOIkuUsFONk/3i3nqkz7Oe1PcpM2mwQEK2L9Kg==}
     engines: {node: '>=16.9.0'}
 
   html-void-elements@3.0.0:
@@ -1865,12 +1869,6 @@ packages:
     resolution: {integrity: sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  modern-isomorphic-ws@1.0.6:
-    resolution: {integrity: sha512-PBJeIsFuYR8Mx4IC6KMtslXDb02oCKt58Dee/R10sz10FiPjBgZNTLyzlWR3428U4SzWUBJiiZ7iWvK2tcXShQ==}
-    deprecated: Starting with version 22.4.0, Node.js includes a WebSocket client API without an experimental flag
-    peerDependencies:
-      ws: ^8.11.0
-
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
     engines: {node: '>=4'}
@@ -1889,8 +1887,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  neuro-game-sdk@1.0.6:
-    resolution: {integrity: sha512-wo6QMae2PB64th0uPnhM5EsUKzlhcZIpA3KYLB07CyWvxmB3Wl7F8ZeyrVEVFElWPeOsKHvtqAQolXe6tOXDrQ==}
+  neuro-game-sdk@1.1.0:
+    resolution: {integrity: sha512-RlAa17tSUjuIOV0/esrCVDCZB8DrBJ+Ixbr8GhdgrYRYAp5BdCx3rTZOp0W4vhLuhtRdqlbg4flC5QLsJeRPgw==}
 
   node-html-parser@6.1.13:
     resolution: {integrity: sha512-qIsTMOY4C/dAa5Q5vsobRpOOvPfC4pB61UVW2uSwZNUp0QU/jCekTal1vMmbO0DgdHeLUJpv/ARmDqErVxA3Sg==}
@@ -2007,8 +2005,8 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  preact@10.28.2:
-    resolution: {integrity: sha512-lbteaWGzGHdlIuiJ0l2Jq454m6kcpI1zNje6d8MlGAFlYvP2GO4ibnat7P74Esfz4sPTdM6UxtTwh/d3pwM9JA==}
+  preact@10.29.1:
+    resolution: {integrity: sha512-gQCLc/vWroE8lIpleXtdJhTFDogTdZG9AjMUpVkDf2iTCNwYNWA+u16dL41TqUDJO4gm2IgrcMv3uTpjd4Pwmg==}
 
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
@@ -2403,18 +2401,6 @@ packages:
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
-
-  ws@8.18.3:
-    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
 
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
@@ -2938,7 +2924,7 @@ snapshots:
 
   '@eslint/eslintrc@3.3.5':
     dependencies:
-      ajv: 6.14.0
+      ajv: 6.15.0
       debug: 4.4.3
       espree: 10.4.0
       globals: 14.0.0
@@ -2959,12 +2945,17 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@humanfs/core@0.19.1': {}
-
-  '@humanfs/node@0.16.7':
+  '@humanfs/core@0.19.2':
     dependencies:
-      '@humanfs/core': 0.19.1
+      '@humanfs/types': 0.15.0
+
+  '@humanfs/node@0.16.8':
+    dependencies:
+      '@humanfs/core': 0.19.2
+      '@humanfs/types': 0.15.0
       '@humanwhocodes/retry': 0.4.3
+
+  '@humanfs/types@0.15.0': {}
 
   '@humanwhocodes/module-importer@1.0.1': {}
 
@@ -3166,12 +3157,12 @@ snapshots:
 
   '@popperjs/core@2.11.8': {}
 
-  '@preact/preset-vite@2.10.2(@babel/core@7.28.5)(preact@10.28.2)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))':
+  '@preact/preset-vite@2.10.2(@babel/core@7.28.5)(preact@10.29.1)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))':
     dependencies:
       '@babel/core': 7.28.5
       '@babel/plugin-transform-react-jsx': 7.27.1(@babel/core@7.28.5)
       '@babel/plugin-transform-react-jsx-development': 7.27.1(@babel/core@7.28.5)
-      '@prefresh/vite': 2.4.11(preact@10.28.2)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))
+      '@prefresh/vite': 2.4.11(preact@10.29.1)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))
       '@rollup/pluginutils': 4.2.1
       babel-plugin-transform-hook-names: 1.0.2(@babel/core@7.28.5)
       debug: 4.4.3
@@ -3184,20 +3175,20 @@ snapshots:
 
   '@prefresh/babel-plugin@0.5.2': {}
 
-  '@prefresh/core@1.5.9(preact@10.28.2)':
+  '@prefresh/core@1.5.9(preact@10.29.1)':
     dependencies:
-      preact: 10.28.2
+      preact: 10.29.1
 
   '@prefresh/utils@1.2.1': {}
 
-  '@prefresh/vite@2.4.11(preact@10.28.2)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))':
+  '@prefresh/vite@2.4.11(preact@10.29.1)(vite@8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0))':
     dependencies:
       '@babel/core': 7.28.5
       '@prefresh/babel-plugin': 0.5.2
-      '@prefresh/core': 1.5.9(preact@10.28.2)
+      '@prefresh/core': 1.5.9(preact@10.29.1)
       '@prefresh/utils': 1.2.1
       '@rollup/pluginutils': 4.2.1
-      preact: 10.28.2
+      preact: 10.29.1
       vite: 8.0.0-beta.15(@types/node@20.19.25)(esbuild@0.27.2)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
@@ -3428,7 +3419,7 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  ajv@6.14.0:
+  ajv@6.15.0:
     dependencies:
       fast-deep-equal: 3.1.3
       fast-json-stable-stringify: 2.1.0
@@ -3753,11 +3744,11 @@ snapshots:
       '@eslint/eslintrc': 3.3.5
       '@eslint/js': 9.39.2
       '@eslint/plugin-kit': 0.4.1
-      '@humanfs/node': 0.16.7
+      '@humanfs/node': 0.16.8
       '@humanwhocodes/module-importer': 1.0.1
       '@humanwhocodes/retry': 0.4.3
       '@types/estree': 1.0.8
-      ajv: 6.14.0
+      ajv: 6.15.0
       chalk: 4.1.2
       cross-spawn: 7.0.6
       debug: 4.4.3
@@ -3953,7 +3944,7 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.12.14: {}
+  hono@4.12.16: {}
 
   html-void-elements@3.0.0: {}
 
@@ -4317,10 +4308,6 @@ snapshots:
     dependencies:
       brace-expansion: 2.0.2
 
-  modern-isomorphic-ws@1.0.6(ws@8.18.3):
-    dependencies:
-      ws: 8.18.3
-
   mri@1.2.0: {}
 
   ms@2.1.3: {}
@@ -4332,12 +4319,9 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  neuro-game-sdk@1.0.6(ws@8.18.3):
+  neuro-game-sdk@1.1.0:
     dependencies:
-      modern-isomorphic-ws: 1.0.6(ws@8.18.3)
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - ws
+      '@types/json-schema': 7.0.15
 
   node-html-parser@6.1.13:
     dependencies:
@@ -4454,7 +4438,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  preact@10.28.2: {}
+  preact@10.29.1: {}
 
   prelude-ls@1.2.1: {}
 
@@ -4712,7 +4696,8 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  tslib@2.8.1: {}
+  tslib@2.8.1:
+    optional: true
 
   tsx@4.21.0:
     dependencies:
@@ -4853,8 +4838,6 @@ snapshots:
       winston-transport: 4.9.0
 
   word-wrap@1.2.5: {}
-
-  ws@8.18.3: {}
 
   yallist@3.1.1: {}
 
