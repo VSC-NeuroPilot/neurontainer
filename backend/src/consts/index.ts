@@ -1,7 +1,6 @@
-import { NeuroClient } from 'neuro-game-sdk'
+import { NeuroClient, type ActionData } from 'neuro-game-sdk'
 import { DockerClient } from '@docker/node-sdk'
 import { Logger } from '../utils/logger'
-import type { ActionData } from '../types/rce'
 import { actions } from '../functions'
 import { stripToActions } from '../utils/misc'
 import { RCEActionHandler } from '../rce'
@@ -117,8 +116,8 @@ class NoderontainerConstants {
 
     client.onClose = (e) => {
       if (gen !== this.neuroGeneration) return
-      const code = e?.code ?? e?.kCode ?? 'unknown'
-      const reason = e?.reason ?? e?.kReason ?? ''
+      const code = e?.code ?? 'unknown'
+      const reason = e?.reason ?? ''
       const wsInfo = this.describeWs(this.neuro?.ws)
       CONT.logger.warn(`Neuro client closed (code=${code}, reason=${reason}) url=${this.currentNeuroUrl}. ${wsInfo}`)
       this.setLastNeuroEvent({
@@ -213,8 +212,8 @@ class NoderontainerConstants {
 
     this.neuro.onClose = (e) => {
       if (gen !== this.neuroGeneration) return
-      const code = e?.code ?? e?.kCode ?? 'unknown'
-      const reason = e?.reason ?? e?.kReason ?? ''
+      const code = e?.code ?? 'unknown'
+      const reason = e?.reason ?? ''
       const wsInfo = this.describeWs(this.neuro?.ws)
       CONT.logger.warn(`Neuro client closed (code=${code}, reason=${reason}) url=${this.currentNeuroUrl}. ${wsInfo}`)
       this.setLastNeuroEvent({
