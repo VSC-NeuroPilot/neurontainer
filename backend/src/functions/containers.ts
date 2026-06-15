@@ -1,8 +1,8 @@
-import type { JSONSchema7 } from "json-schema";
+import type { Action, ActionData } from "neuro-game-sdk";
 import { CONT } from "../consts";
-import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce.d";
+import { PermissionLevel, type ActionResult, type RCEAction } from "../types/rce.d";
 
-const containerTargetSchema: JSONSchema7 = {
+const containerTargetSchema: Action['schema'] = {
     type: "object",
     properties: {
         container: {
@@ -10,7 +10,8 @@ const containerTargetSchema: JSONSchema7 = {
         }
     },
     required: ['container']
-}
+};
+
 export const containerActions: RCEAction[] = [
     {
         name: 'list_containers',
@@ -64,25 +65,25 @@ export async function handleListContainers(_actionData: ActionData): Promise<Act
 }
 
 export async function handleStartContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params.container
+    const containerId = actionData.params!.container
     await CONT.docker!.containerStart(containerId)
     return { success: true, message: `Container ${containerId} started.` }
 }
 
 export async function handleStopContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params.container
+    const containerId = actionData.params!.container
     await CONT.docker!.containerStop(containerId)
     return { success: true, message: `Container ${containerId} stopped.` }
 }
 
 export async function handleRestartContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params.container
+    const containerId = actionData.params!.container
     await CONT.docker!.containerRestart(containerId)
     return { success: true, message: `Container ${containerId} restarted.` }
 }
 
 export async function handleRemoveContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params.container
+    const containerId = actionData.params!.container
     await CONT.docker!.containerDelete(containerId, { force: true })
     return { success: true, message: `Container ${containerId} removed.` }
 }

@@ -1,5 +1,5 @@
 import { CONT } from '../consts';
-import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from '../types/rce.d'
+import { PermissionLevel, type ActionResult, type RCEAction } from '../types/rce.d'
 
 export const networkActions: RCEAction[] = [
     {
@@ -10,7 +10,7 @@ export const networkActions: RCEAction[] = [
     }
 ];
 
-async function handleListNetworks(_actionData: ActionData): Promise<ActionResult> {
+async function handleListNetworks(): Promise<ActionResult> {
     const volumes = await CONT.docker?.networkList()
     return {
         success: true,

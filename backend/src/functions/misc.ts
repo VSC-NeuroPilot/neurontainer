@@ -1,4 +1,5 @@
-import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce.d";
+import type { ActionData } from "neuro-game-sdk";
+import { PermissionLevel, type ActionResult, type RCEAction } from "../types/rce.d";
 
 export const miscActions: RCEAction[] = [
     {
@@ -18,7 +19,6 @@ export const miscActions: RCEAction[] = [
     {
         name: 'get_changelog',
         description: 'Get the changelog. You can even specify the version.',
-        schema: {},
         defaultPermission: PermissionLevel.AUTOPILOT,
         handler: handleGetChangelog,
     }

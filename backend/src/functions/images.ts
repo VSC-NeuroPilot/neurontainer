@@ -1,5 +1,5 @@
 import { CONT } from "../consts";
-import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from "../types/rce.d";
+import { PermissionLevel, type ActionResult, type RCEAction } from "../types/rce.d";
 
 export const imageActions: RCEAction[] = [
     {
@@ -10,7 +10,7 @@ export const imageActions: RCEAction[] = [
     }
 ];
 
-export async function handleListImages(_actionData: ActionData): Promise<ActionResult> {
+export async function handleListImages(): Promise<ActionResult> {
     const images = await CONT.docker!.imageList()
     const imageInfo = images.map((img) => ({
         tags: img.RepoTags || ['<none>'],
