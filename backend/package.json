@@ -6,22 +6,22 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "prebuild": "tsc --noEmit",
-    "build": "node esbuild.mjs",
+    "build": "rolldown -c",
     "start": "node dist/index.js"
   },
   "dependencies": {
     "@docker/node-sdk": "~0.0.17",
-    "hono": "~4.12.14",
+    "hono": "~4.12.25",
     "jsonschema": "^1.5.0",
-    "neuro-game-sdk": "~1.0.6",
+    "neuro-game-sdk": "~1.1.1",
     "winston": "~3.19.0",
     "winston-transport": "~4.9.0"
   },
   "devDependencies": {
     "@types/json-schema": "^7.0.15",
-    "@types/node": "~20.11.17",
-    "esbuild": "^0.27.2",
-    "tsx": "~4.21.0",
-    "typescript": "~5.9.3"
+    "@types/node": "~24.12.4",
+    "rolldown": "^1.1.1",
+    "tsx": "~4.22.4",
+    "typescript": "~6.0.3"
   }
 }

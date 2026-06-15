@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { CONT } from '../consts'
-import { PermissionLevel } from '../types/rce'
+import { PermissionLevel } from '../types/rce.d'
 
 export interface ActionConfig {
     [actionName: string]: PermissionLevel | undefined

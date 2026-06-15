@@ -1,10 +1,11 @@
-import type { ActionData, ActionResult } from "./types/rce";
+import type { ActionResult } from "./types/rce";
 import { CONT, ERROR_MSG_REFERENCE } from "./consts";
 import { actions } from "./functions";
 import { validate } from "jsonschema";
+import type { ActionData } from "neuro-game-sdk";
 import { readConfig } from "./config/permissions";
 import { CONFIG_PATH } from "./config/paths";
-import { PermissionLevel } from "./types/rce";
+import { PermissionLevel } from "./types/rce.d";
 
 export async function RCEActionHandler(actionData: ActionData): Promise<void> {
     console.log(`Received action from Neuro: ${actionData.name}`, actionData.params);

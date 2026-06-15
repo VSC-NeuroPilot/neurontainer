@@ -1,3 +1,19 @@
-import type { ActionData, RCEAction } from '../types/rce.d'
+import { CONT } from '../consts';
+import { PermissionLevel, type ActionData, type ActionResult, type RCEAction } from '../types/rce.d'
 
-export const networkActions: RCEAction[] = [];
+export const networkActions: RCEAction[] = [
+    {
+        name: 'list_networks',
+        description: 'Gets a list of networks in Docker.',
+        handler: handleListNetworks,
+        defaultPermission: PermissionLevel.AUTOPILOT,
+    }
+];
+
+async function handleListNetworks(_actionData: ActionData): Promise<ActionResult> {
+    const volumes = await CONT.docker?.networkList()
+    return {
+        success: true,
+        message: ''
+    }
+}

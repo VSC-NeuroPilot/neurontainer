@@ -6,7 +6,7 @@ import { CONT } from './consts'
 import { logger } from './utils'
 import { RCEActionHandler } from './rce'
 import { actions } from './functions'
-import { PermissionLevel } from './types/rce'
+import { PermissionLevel } from './types/rce.d'
 import {
   normalizeConfig,
   readConfig,
@@ -45,10 +45,10 @@ app.use('*', async (c, next) => {
 
 function registerActionSubset(actionSubset: typeof actions): void {
   if (!actionSubset.length) return
-  const actionsToRegister = actionSubset.map(a => ({
-    name: a.name,
-    description: a.description,
-    schema: a.schema
+  const actionsToRegister = actionSubset.map(({ name, description, schema }) => ({
+    name,
+    description,
+    schema
   }))
   CONT.neuro.registerActions(actionsToRegister)
 }
@@ -141,10 +141,10 @@ app.get('/api/changelog', async (c) => {
   try {
     const markdown = await fs.promises.readFile(CHANGELOG_PATH, 'utf-8')
     return c.json({ success: true, markdown })
-  } catch (error: any) {
-    const code = error?.code
-    const message = error instanceof Error ? error.message : String(error ?? 'Failed to read changelog')
-    logger.error('Error reading changelog:', error)
+  } catch (erm: unknown) {
+    const code = (erm as { code: string }).code ?? 'unknown'
+    const message = erm instanceof Error ? erm.message : String(erm ?? 'Failed to read changelog')
+    logger.error('Error reading changelog:', erm)
     if (code === 'ENOENT') {
       return c.json({ success: false, error: `Changelog not found at ${CHANGELOG_PATH}` }, 404)
     }
@@ -174,9 +174,9 @@ app.post('/api/reconnect/neuro', async (c) => {
       message: `NeuroClient connected to ${CONT.currentNeuroUrl}`,
       websocketUrl: CONT.currentNeuroUrl
     })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to reconnect NeuroClient'
-    console.error('Error reconnecting NeuroClient:', error)
+  } catch (erm) {
+    const message = erm instanceof Error ? erm.message : 'Failed to reconnect NeuroClient'
+    console.error('Error reconnecting NeuroClient:', erm)
     if (CONT.lastReconnectRequest) {
       CONT.lastNeuroEvent = {
         type: 'reconnect_fail',
@@ -211,9 +211,9 @@ app.post('/api/reconnect/docker', async (c) => {
         dockerHost: process.env.DOCKER_HOST || 'unset'
       })
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to reconnect Docker client'
-    logger.error('Error reconnecting Docker client:', error)
+  } catch (erm) {
+    const message = erm instanceof Error ? erm.message : 'Failed to reconnect Docker client'
+    logger.error('Error reconnecting Docker client:', erm)
     return c.json({ success: false, error: message }, 500)
   }
 })
@@ -232,9 +232,9 @@ app.get('/api/config', (c) => {
     }
     currentConfig = normalized
     return c.json({ success: true, config: { permissions: normalized } });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to read config';
-    logger.error('Error reading config:', error);
+  } catch (erm) {
+    const message = erm instanceof Error ? erm.message : 'Failed to read config';
+    logger.error('Error reading config:', erm);
     return c.json({ success: false, error: message }, 500);
   }
 });
@@ -260,9 +260,9 @@ app.put('/api/config', async (c) => {
       message: 'Config updated and applied',
       config: { permissions: next }
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update config';
-    logger.error('Error updating config:', error);
+  } catch (erm) {
+    const message = erm instanceof Error ? erm.message : 'Failed to update config';
+    logger.error('Error updating config:', erm);
     return c.json({ success: false, error: message }, 500);
   }
 });
@@ -284,8 +284,8 @@ async function gracefulShutdown(signal: string) {
 
     logger.info('Shutdown complete')
     process.exit(0)
-  } catch (error) {
-    logger.error('Error during shutdown:', error)
+  } catch (erm) {
+    logger.error('Error during shutdown:', erm)
     process.exit(1)
   }
 }
@@ -332,7 +332,7 @@ process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'))
       const request = new Request(url.href, {
         method: req.method,
         headers,
-        body: body as any
+        body: body as BodyInit,
       })
 
       // Call Hono's fetch handler

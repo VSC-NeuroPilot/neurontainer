@@ -1,11 +1,5 @@
-import { JSONSchema7Object, type JSONSchema7 } from 'json-schema'
+import type { JSONSchema7Object, JSONSchema7 } from 'json-schema'
 import { Action } from 'neuro-game-sdk';
-
-export interface ActionData<T extends JSONSchema7Object | undefined = any> {
-    id: string;
-    name: string;
-    params: T;
-};
 
 export interface ActionResult {
     success: boolean;
@@ -13,9 +7,7 @@ export interface ActionResult {
     silent?: boolean;
 };
 
-export type TypedAction = Omit<Action, 'schema'> & { schema?: JSONSchema7 };
-
-export interface RCEAction extends TypedAction {
+export interface RCEAction extends Action {
     displayName?: string;
     validators?: ((actionData: ActionData) => ActionValidationResult | Promise<ActionValidationResult>)[];
     handler: RCEHandler;
