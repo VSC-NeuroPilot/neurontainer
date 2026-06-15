@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # Stage 1: Build all workspace packages
-FROM node:22 AS builder
+FROM node:24 AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN pnpm -r build
 RUN pnpm install --prod --force --frozen-lockfile
 
 # Stage 2: Final runtime image
-FROM node:22-alpine
+FROM node:24-alpine
 
 ARG EXTENSION_CHANGELOG=""
 
