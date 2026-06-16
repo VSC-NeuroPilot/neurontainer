@@ -46,10 +46,24 @@ export const containerActions: RCEAction[] = [
         schema: containerTargetSchema,
         defaultPermission: PermissionLevel.OFF,
         handler: handleRemoveContainer,
+    },
+    {
+        name: 'pause_container',
+        description: 'Pause a currently running container by name or ID.',
+        schema: containerTargetSchema,
+        defaultPermission: PermissionLevel.OFF,
+        handler: handlePauseContainer,
+    },
+    {
+        name: 'unpause_container',
+        description: 'Unpause a currently paused container by name or ID.',
+        schema: containerTargetSchema,
+        defaultPermission: PermissionLevel.OFF,
+        handler: handleUnpauseContainer,
     }
 ];
 
-export async function handleListContainers(_actionData: ActionData): Promise<ActionResult> {
+export async function handleListContainers(): Promise<ActionResult> {
     const containers = await CONT.docker!.containerList({ all: true })
     const containerInfo = containers.map((c) => ({
         name: c.Names?.[0]?.replace('/', '') || c.Id?.substring(0, 12) || 'Unknown container',
@@ -65,25 +79,37 @@ export async function handleListContainers(_actionData: ActionData): Promise<Act
 }
 
 export async function handleStartContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params!.container
-    await CONT.docker!.containerStart(containerId)
-    return { success: true, message: `Container ${containerId} started.` }
+    const { container } = actionData.params!;
+    await CONT.docker!.containerStart(container);
+    return { success: true, message: `Container ${container} started.` };
 }
 
 export async function handleStopContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params!.container
-    await CONT.docker!.containerStop(containerId)
-    return { success: true, message: `Container ${containerId} stopped.` }
+    const { container } = actionData.params!;
+    await CONT.docker!.containerStop(container);
+    return { success: true, message: `Container ${container} stopped.` };
 }
 
 export async function handleRestartContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params!.container
-    await CONT.docker!.containerRestart(containerId)
-    return { success: true, message: `Container ${containerId} restarted.` }
+    const { container } = actionData.params!;
+    await CONT.docker!.containerRestart(container);
+    return { success: true, message: `Container ${container} restarted.` };
 }
 
 export async function handleRemoveContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
-    const containerId = actionData.params!.container
-    await CONT.docker!.containerDelete(containerId, { force: true })
-    return { success: true, message: `Container ${containerId} removed.` }
+    const { container } = actionData.params!;
+    await CONT.docker!.containerDelete(container, { force: true });
+    return { success: true, message: `Container ${container} removed.` };
+}
+
+export async function handlePauseContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
+    const { container } = actionData.params!
+    await CONT.docker!.containerPause(container);
+    return { success: true, message: `Container ${container} paused.` };
+}
+
+export async function handleUnpauseContainer(actionData: ActionData<{ container: string }>): Promise<ActionResult> {
+    const { container } = actionData.params!
+    await CONT.docker!.containerUnpause(container);
+    return { success: true, message: `Container ${container} unpaused.` };
 }
