@@ -1,4 +1,4 @@
-import type { ActionResult } from "./types/rce";
+import type { ActionResult, RCEActionData } from "./types/rce";
 import { CONT, ERROR_MSG_REFERENCE } from "./consts";
 import { actions } from "./functions";
 import { validate } from "jsonschema";
@@ -6,6 +6,7 @@ import type { ActionData } from "neuro-game-sdk";
 import { readConfig } from "./config/permissions";
 import { CONFIG_PATH } from "./config/paths";
 import { PermissionLevel } from "./types/rce.d";
+import { convertToJSONSchema } from "./utils/misc";
 
 export async function RCEActionHandler(actionData: ActionData): Promise<void> {
     console.log(`Received action from Neuro: ${actionData.name}`, actionData.params);
@@ -39,7 +40,8 @@ export async function RCEActionHandler(actionData: ActionData): Promise<void> {
     }
 
     if (action.schema) {
-        const result = validate(actionData.params, action.schema, { required: true });
+        const convertedSchema = convertToJSONSchema(action.schema);
+        const result = validate(actionData.params, convertedSchema);
         if (!result.valid) {
             const messagesArray: string[] = [];
             result.errors.map((erm) => {
@@ -56,7 +58,7 @@ export async function RCEActionHandler(actionData: ActionData): Promise<void> {
 
     if (action.validators) {
         for (const v of action.validators) {
-            const result = await v(actionData);
+            const result = await v(actionData as RCEActionData);
             if (!result.success) {
                 CONT.neuro.sendActionResult(actionData.id, !result.retry, result.message);
                 return;
@@ -67,7 +69,7 @@ export async function RCEActionHandler(actionData: ActionData): Promise<void> {
     CONT.neuro.sendActionResult(actionData.id, true);
 
     try {
-        const actionResult: ActionResult = await action.handler(actionData);
+        const actionResult: ActionResult = await action.handler(actionData as RCEActionData);
         if (!actionResult.success) CONT.logger.error(`Action ${actionData.name} failed! Full reason: ${actionResult.message}`)
         CONT.neuro.sendContext(actionResult.success ? actionResult.message : `Action failed: ${actionResult.message}`, actionResult.silent);
     } catch (erm) {

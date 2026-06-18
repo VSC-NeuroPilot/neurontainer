@@ -1,37 +1,28 @@
-import type { ActionData } from "neuro-game-sdk";
 import { PermissionLevel, type ActionResult, type RCEAction } from "../types/rce.d";
+import z from "zod";
 
 export const miscActions: RCEAction[] = [
     {
         name: 'get_cookie',
         description: 'Get a cookie! You can even choose the flavor.',
-        schema: {
-            type: 'object',
-            properties: {
-                flavor: {
-                    type: 'string'
-                }
-            }
-        },
+        schema: z.object({
+            flavor: z.string().optional()
+        }),
         defaultPermission: PermissionLevel.AUTOPILOT,
-        handler: handleGetCookie,
+        async handler(actionData) {
+            const flavor = actionData.params?.flavor ?? 'test';
+            return { success: true, message: `You got a ${flavor} cookie!` };
+        },
     },
     {
         name: 'get_changelog',
         description: 'Get the changelog. You can even specify the version.',
         defaultPermission: PermissionLevel.AUTOPILOT,
-        handler: handleGetChangelog,
+        async handler() {
+            return {
+                success: true,
+                message: 'Mocking successful return'
+            }
+        },
     }
 ]
-
-export async function handleGetCookie(actionData: ActionData<{ flavor?: string } | undefined>): Promise<ActionResult> {
-    const flavor = actionData.params?.flavor ?? 'test';
-    return { success: true, message: `You got a ${flavor} cookie!` };
-}
-
-export async function handleGetChangelog(actionData: ActionData<{ version?: string } | undefined>): Promise<ActionResult> {
-    return {
-        success: true,
-        message: 'Mocking successful return'
-    }
-}

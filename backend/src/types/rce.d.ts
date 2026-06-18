@@ -1,5 +1,6 @@
 import type { JSONSchema7Object, JSONSchema7 } from 'json-schema'
-import { Action } from 'neuro-game-sdk';
+import type { Action, ActionData } from 'neuro-game-sdk';
+import type z from 'zod';
 
 export interface ActionResult {
     success: boolean;
@@ -7,12 +8,18 @@ export interface ActionResult {
     silent?: boolean;
 };
 
-export interface RCEAction extends Action {
+export interface RCEAction<TSchema extends z.ZodObject = z.ZodObject> extends Omit<Action, 'schema'> {
+    schema?: TSchema;
     displayName?: string;
-    validators?: ((actionData: ActionData) => ActionValidationResult | Promise<ActionValidationResult>)[];
-    handler: RCEHandler;
+    validators?: ((actionData: RCEActionData<TSchema>) => ActionValidationResult | Promise<ActionValidationResult>)[];
+    handler: RCEHandler<TSchema>;
     defaultPermission: PermissionLevel;
 };
+
+export type RCEActionData<TSchema extends z.ZodObject = z.ZodObject> =
+    TSchema extends undefined
+        ? Omit<ActionData, 'params'> & { params?: undefined }
+        : Omit<ActionData, 'params'> & { params: z.input<TSchema> };
 
 /** Permission level enums */
 export enum PermissionLevel {
@@ -21,7 +28,7 @@ export enum PermissionLevel {
     OFF,
 }
 
-type RCEHandler = (actionData: ActionData) => Promise<ActionResult>;
+type RCEHandler<TSchema extends z.ZodObject> = (actionData: RCEActionData<TSchema>) => Promise<ActionResult>;
 
 /** The result of attempting to execute an action client-side. */
 export interface ActionValidationResult {
