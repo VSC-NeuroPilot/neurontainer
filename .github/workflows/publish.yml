@@ -26,21 +26,20 @@ jobs:
       IMAGE_NAME: "neurontainer"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: 10.24.x
+          version: 11.x
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22.14.x
-          cache: pnpm
-          cache-dependency-path: "./pnpm-lock.yaml"
+          node-version: 24.x
 
       - name: Install JS deps (for utils)
         run: |
@@ -109,8 +108,9 @@ jobs:
       - name: Extract extension changelog
         id: changelog
         if: steps.release.outputs.should_publish == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
         run: |
-          VERSION="${{ steps.release.outputs.version }}"
           VALUE=$(pnpm --filter ./utils -s exec tsx extract-changelog-label.ts "$VERSION")
           # GitHub output escaping
           VALUE="${VALUE//'%'/'%25'}"
@@ -135,7 +135,8 @@ jobs:
 
       - name: Tag release
         if: steps.release.outputs.should_publish == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
         run: |
-          VERSION="${{ steps.release.outputs.version }}"
           git tag "v$VERSION"
           git push origin "v$VERSION"
