@@ -6,6 +6,8 @@
 version: 2
 updates:
   - package-ecosystem: "npm" # See documentation for possible values
+    cooldown:
+      default-days: 1
     directory: "/" # Location of package manifests
     schedule:
       interval: "monthly"
@@ -20,3 +22,11 @@ updates:
         update-types:
           - patch
           - minor
+  - package-ecosystem: "github-actions"
+    cooldown:
+      default-days: 2
+    directory: /
+    schedule:
+      interval: monthly
+      time: "00:00"
+      timezone: "Etc/UTC"
