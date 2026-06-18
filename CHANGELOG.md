@@ -1,5 +1,19 @@
 <!-- markdownlint-disable -->
 
+## 1.1.0
+
+### Minor Changes
+
+- 199274a: make container parameter mandatory
+- 199274a: add default permission levels
+- edffef0: Bump Docker image to Node.js 24
+
+### Patch Changes
+
+- 7a81d98: Allow Neuro to pause or unpause running containers
+- aeb8385: Fix typo in list_images description
+- 199274a: forgot to add the cookie action
+
 # neurontainer
 
 ## 1.0.4
