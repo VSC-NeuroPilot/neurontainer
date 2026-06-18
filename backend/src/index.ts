@@ -15,6 +15,7 @@ import {
   type ActionConfig,
 } from './config/permissions'
 import { CHANGELOG_PATH, CONFIG_PATH } from './config/paths'
+import { stripToAction } from './utils/misc'
 
 const SOCKET_PATH = '/run/guest-services/backend.sock';
 
@@ -45,11 +46,7 @@ app.use('*', async (c, next) => {
 
 function registerActionSubset(actionSubset: typeof actions): void {
   if (!actionSubset.length) return
-  const actionsToRegister = actionSubset.map(({ name, description, schema }) => ({
-    name,
-    description,
-    schema
-  }))
+  const actionsToRegister = actionSubset.map(stripToAction)
   CONT.neuro.registerActions(actionsToRegister)
 }
 
