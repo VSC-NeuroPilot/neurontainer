@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@docker/node-sdk": "~0.0.17",
-    "hono": "~4.12.25",
+    "hono": "~4.12.33",
     "jsonschema": "^1.5.0",
-    "neuro-game-sdk": "~1.1.1",
+    "neuro-game-sdk": "~1.1.2",
     "winston": "~3.19.0",
     "winston-transport": "~4.9.0",
     "zod": "^4.4.3"
